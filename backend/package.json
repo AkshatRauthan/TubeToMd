@@ -1,0 +1,42 @@
+{
+    "name": "TubeToMD-Backend",
+    "version": "1.0.0",
+    "module": "commonjs",
+    "main": "dist/index.js",
+    "scripts": {
+        "dev": "ts-node-dev --respawn --require tsconfig-paths/register --project tsconfig.json src/index.ts",
+        "build": "tsc && tsc-alias",
+        "start": "node dist/index.js"
+    },
+    "author": "Akshat Rauthan",
+    "license": "ISC",
+    "dependencies": {
+        "@types/mongoose": "^5.11.96",
+        "axios": "^1.13.2",
+        "cors": "^2.8.5",
+        "dotenv": "^16.5.0",
+        "express": "^5.1.0",
+        "fs": "^0.0.1-security",
+        "http-status-codes": "^2.3.0",
+        "jsonwebtoken": "^9.0.3",
+        "luxon": "^3.6.1",
+        "mongoose": "^8.13.2",
+        "multer": "^1.4.5-lts.2",
+        "node-cron": "^4.2.1",
+        "node-fetch": "^2.7.0"
+    },
+    "devDependencies": {
+        "@types/cors": "^2.8.17",
+        "@types/express": "^5.0.1",
+        "@types/jsonwebtoken": "^9.0.10",
+        "@types/luxon": "^3.6.2",
+        "@types/multer": "^1.4.12",
+        "@types/node": "^22.14.1",
+        "@types/node-fetch": "^2.6.12",
+        "ts-node": "^10.9.2",
+        "ts-node-dev": "^2.0.0",
+        "tsc-alias": "^1.8.16",
+        "tsconfig-paths": "^4.2.0",
+        "typescript": "^5.8.3"
+    }
+}
