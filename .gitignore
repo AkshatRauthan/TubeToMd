@@ -68,3 +68,6 @@ pids
 # Reports and documentation
 /docs/jsdoc
 /reports
+/docs/imgs
+*.pdf
+*venv

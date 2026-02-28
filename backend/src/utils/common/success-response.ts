@@ -1,10 +1,30 @@
-import { ISuccessResponse } from '@types';
+import { Response } from 'express';
+import { StatusCodes } from 'http-status-codes';
 
-const successResponse: ISuccessResponse = {
-    success: true,
-    message:'Request Successful',
-    data: {},
-    error:{}
-};
+class SuccessResponse {
+    public success: boolean;
+    public message: string;
+    public data: any;
+    public statusCode: number;
 
-export default successResponse;
+    constructor(
+        message: string = 'Request Successful',
+        data: any = {},
+        statusCode: number = StatusCodes.OK
+    ) {
+        this.success = true;
+        this.message = message;
+        this.data = data;
+        this.statusCode = statusCode;
+    }
+
+    send(res: Response): Response {
+        return res.status(this.statusCode).json({
+            success: this.success,
+            message: this.message,
+            data: this.data,
+        });
+    }
+}
+
+export default SuccessResponse;
