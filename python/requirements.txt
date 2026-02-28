@@ -1,0 +1,11 @@
+openai-whisper
+youtube-transcript-api
+fastapi
+uvicorn[standard]
+python-dotenv
+python-multipart
+yt-dlp
+pydantic
+pydantic-settings
+ffmpeg-python
+aiofiles

@@ -41,11 +41,14 @@ def get_transcript_with_timestamps(video_url):
             return "Error: Could not extract Video ID"
         video_id = video_id_match.group(1)
 
+        print(f"Fetching transcript for video ID: {video_id}")
         # Fetch the transcript data
         transcript_obj = YouTubeTranscriptApi().fetch(video_id)
 
         formatted_lines = []
         for item in transcript_obj:
+            print(f"Processing segment: start={item.start}, text={item.text[:30]}...")
+
             # item.start gives the time in seconds
             start_time = int(item.start) 
             
@@ -68,4 +71,4 @@ def get_transcript_with_timestamps(video_url):
         return f"Error: {str(e)}"
 
 # Usage for TubeToMD
-print(get_transcript_with_timestamps("https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
+print(get_transcript_with_timestamps("https://youtu.be/dQw4w9WgXcQ?si=rP0JY2VR50GJzGql"))

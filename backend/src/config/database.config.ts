@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const connectDB = async (): Promise<void> => {
 	try {
-		const db_url: string = process.env.MONGO_URI || 'mongodb://localhost:27017/tradylytics';
+		const db_url: string = process.env.MONGODB_URI || 'mongodb://localhost:27017/tubetomd';
 		const conn = await mongoose.connect(db_url);
 		console.log(`\nMongoDB Connected: ${conn.connection.host}`);
 		console.log(`Using DataBase: ${conn.connection.name}`);
