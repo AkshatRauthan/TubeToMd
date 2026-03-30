@@ -1,6 +1,6 @@
 import ChatMessage, { IChatMessage } from '@models/chatMessage.model';
 import Session from '@models/session.model';
-import geminiService from '@services/gemini.service';
+import groqService from '@services/groq.service';
 import embeddingService from '@services/embedding.service';
 import CustomError from '@errors/custom.error';
 import { StatusCodes } from 'http-status-codes';
@@ -52,8 +52,8 @@ class ChatService {
             content: msg.content,
         }));
 
-        // Generate answer using Gemini with RAG context
-        const { answer, sources } = await geminiService.answerQuestion(
+        // Generate answer using Groq with RAG context
+        const { answer, sources } = await groqService.answerQuestion(
             message,
             relevantChunks,
             historyForPrompt,

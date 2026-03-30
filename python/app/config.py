@@ -7,7 +7,7 @@ load_dotenv()
 
 class Settings(BaseSettings):
     PORT: int = 8000
-    WHISPER_MODEL: str = "base"  # tiny, base, small, medium, large-v3
+    GROQ_API_KEY: str = ""
     MAX_FILE_SIZE_MB: int = 500
     UPLOAD_DIR: str = "./uploads"
 

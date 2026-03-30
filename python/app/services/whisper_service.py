@@ -1,7 +1,7 @@
 import os
-import whisper
 import tempfile
 from typing import Optional
+from groq import Groq
 from app.config import settings
 from app.models.schemas import (
     TranscriptSegment,
@@ -11,18 +11,20 @@ from app.models.schemas import (
 from app.utils.audio import extract_audio, get_audio_duration
 
 
-# Load model once at startup
-_model = None
+# Groq client — initialized once
+_client = None
 
 
-def get_whisper_model():
-    """Lazy-load whisper model"""
-    global _model
-    if _model is None:
-        print(f"Loading Whisper model: {settings.WHISPER_MODEL}")
-        _model = whisper.load_model(settings.WHISPER_MODEL)
-        print(f"Whisper model loaded successfully")
-    return _model
+def get_groq_client() -> Groq:
+    """Lazy-load Groq client"""
+    global _client
+    if _client is None:
+        api_key = settings.GROQ_API_KEY
+        if not api_key:
+            raise RuntimeError("GROQ_API_KEY is not set in the environment")
+        _client = Groq(api_key=api_key)
+        print("✅ Groq Whisper client initialized")
+    return _client
 
 
 async def transcribe_chunk(
@@ -32,33 +34,54 @@ async def transcribe_chunk(
     language: Optional[str] = None,
 ) -> ChunkTranscribeResponse:
     """
-    Transcribe a single audio chunk with Whisper.
+    Transcribe a single audio chunk using Groq Whisper API.
     Adjusts all segment timestamps by chunk_offset so they reflect
     their position in the original full-length video.
     """
     try:
         duration = get_audio_duration(file_path)
 
-        model = get_whisper_model()
-        whisper_options = {
-            "verbose": False,
-            "word_timestamps": False,
-        }
-        if language:
-            whisper_options["language"] = language
+        client = get_groq_client()
 
-        result = model.transcribe(file_path, **whisper_options)
+        # Open file and send to Groq Whisper API
+        with open(file_path, "rb") as audio_file:
+            kwargs = {
+                "file": (os.path.basename(file_path), audio_file),
+                "model": "whisper-large-v3-turbo",
+                "response_format": "verbose_json",
+            }
+            if language:
+                kwargs["language"] = language
+
+            result = client.audio.transcriptions.create(**kwargs)
 
         # Build segments with offset-adjusted timestamps
         segments = []
-        for seg in result.get("segments", []):
-            seg_start = float(seg["start"]) + chunk_offset
-            seg_duration = float(seg["end"]) - float(seg["start"])
-            segments.append(TranscriptSegment(
-                start=round(seg_start, 3),
-                duration=round(seg_duration, 3),
-                text=seg["text"].strip(),
-            ))
+        if hasattr(result, "segments") and result.segments:
+            for seg in result.segments:
+                seg_start = float(seg.get("start", 0) if isinstance(seg, dict) else seg.start) + chunk_offset
+                seg_end = float(seg.get("end", 0) if isinstance(seg, dict) else seg.end)
+                seg_duration = seg_end - float(seg.get("start", 0) if isinstance(seg, dict) else seg.start)
+                seg_text = (seg.get("text", "") if isinstance(seg, dict) else seg.text).strip()
+
+                segments.append(TranscriptSegment(
+                    start=round(seg_start, 3),
+                    duration=round(seg_duration, 3),
+                    text=seg_text,
+                ))
+        else:
+            # Fallback: if no segments, create one segment from the full text
+            full_text = result.text if hasattr(result, "text") else str(result)
+            if full_text.strip():
+                segments.append(TranscriptSegment(
+                    start=round(chunk_offset, 3),
+                    duration=round(duration, 3),
+                    text=full_text.strip(),
+                ))
+
+        detected_language = "en"
+        if hasattr(result, "language") and result.language:
+            detected_language = result.language
 
         return ChunkTranscribeResponse(
             success=True,
@@ -66,10 +89,11 @@ async def transcribe_chunk(
             chunk_offset=chunk_offset,
             duration=duration,
             transcript=segments,
-            language=result.get("language", language or "en"),
+            language=detected_language,
         )
 
     except Exception as e:
+        print(f"❌ Groq Whisper chunk transcription error: {e}")
         return ChunkTranscribeResponse(
             success=False,
             chunk_index=chunk_index,
@@ -82,10 +106,10 @@ async def transcribe_chunk(
 async def transcribe_uploaded_file(
     file_path: str,
     filename: str,
-    language: Optional[str] = None
+    language: Optional[str] = None,
 ) -> WhisperTranscribeResponse:
     """
-    Transcribe an uploaded audio/video file using OpenAI Whisper.
+    Transcribe an uploaded audio/video file using Groq Whisper API.
     Supports: mp4, mp3, wav, webm, m4a, ogg, flac, avi, mkv, mov
     """
     try:
@@ -101,25 +125,46 @@ async def transcribe_uploaded_file(
         # Get duration
         duration = get_audio_duration(audio_path)
 
-        # Transcribe with Whisper
-        model = get_whisper_model()
-        whisper_options = {
-            "verbose": False,
-            "word_timestamps": False,
-        }
-        if language:
-            whisper_options["language"] = language
+        # Transcribe with Groq Whisper API
+        client = get_groq_client()
 
-        result = model.transcribe(audio_path, **whisper_options)
+        with open(audio_path, "rb") as audio_file:
+            kwargs = {
+                "file": (os.path.basename(audio_path), audio_file),
+                "model": "whisper-large-v3-turbo",
+                "response_format": "verbose_json",
+            }
+            if language:
+                kwargs["language"] = language
 
-        # Build transcript segments from Whisper's segments
+            result = client.audio.transcriptions.create(**kwargs)
+
+        # Build transcript segments
         segments = []
-        for seg in result.get("segments", []):
-            segments.append(TranscriptSegment(
-                start=float(seg["start"]),
-                duration=float(seg["end"]) - float(seg["start"]),
-                text=seg["text"].strip()
-            ))
+        if hasattr(result, "segments") and result.segments:
+            for seg in result.segments:
+                seg_start = float(seg.get("start", 0) if isinstance(seg, dict) else seg.start)
+                seg_end = float(seg.get("end", 0) if isinstance(seg, dict) else seg.end)
+                seg_text = (seg.get("text", "") if isinstance(seg, dict) else seg.text).strip()
+
+                segments.append(TranscriptSegment(
+                    start=seg_start,
+                    duration=seg_end - seg_start,
+                    text=seg_text,
+                ))
+        else:
+            # Fallback: single segment from full text
+            full_text = result.text if hasattr(result, "text") else str(result)
+            if full_text.strip():
+                segments.append(TranscriptSegment(
+                    start=0.0,
+                    duration=duration,
+                    text=full_text.strip(),
+                ))
+
+        detected_language = language or "en"
+        if hasattr(result, "language") and result.language:
+            detected_language = result.language
 
         # Clean up temp audio file if we extracted it
         if ext in video_extensions and os.path.exists(audio_path):
@@ -130,13 +175,14 @@ async def transcribe_uploaded_file(
             filename=filename,
             duration=duration,
             transcript=segments,
-            language=result.get("language", language or "en")
+            language=detected_language,
         )
 
     except Exception as e:
+        print(f"❌ Groq Whisper transcription error: {e}")
         return WhisperTranscribeResponse(
             success=False,
             filename=filename,
             transcript=[],
-            error=str(e)
+            error=str(e),
         )

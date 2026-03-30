@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import geminiKeyManager from '@services/geminiKeyManager.service';
+import groqKeyManager from '@services/groqKeyManager.service';
 import serverConfig from '@config/server.config';
 
 const router = Router();
@@ -41,20 +41,20 @@ function adminAuth(req: Request, res: Response, next: NextFunction) {
 router.use(adminAuth);
 
 /**
- * GET /api/v1/admin/gemini-keys
- * Get status of all configured Gemini API keys.
+ * GET /api/v1/admin/groq-keys
+ * Get status of all configured API keys.
  */
-router.get('/gemini-keys', (_req: Request, res: Response) => {
-    const status = geminiKeyManager.getStatus();
+router.get('/groq-keys', (_req: Request, res: Response) => {
+    const status = groqKeyManager.getStatus();
     res.json({ success: true, message: 'Key pool status', data: status });
 });
 
 /**
- * POST /api/v1/admin/gemini-keys
- * Add a new Gemini API key to the pool.
+ * POST /api/v1/admin/groq-keys
+ * Add a new API key to the pool.
  * Body: { key: string, label?: string }
  */
-router.post('/gemini-keys', (req: Request, res: Response) => {
+router.post('/groq-keys', (req: Request, res: Response) => {
     const { key, label } = req.body;
 
     if (!key || typeof key !== 'string' || key.trim().length < 10) {
@@ -64,7 +64,7 @@ router.post('/gemini-keys', (req: Request, res: Response) => {
         });
     }
 
-    const added = geminiKeyManager.addKey(key.trim(), label);
+    const added = groqKeyManager.addKey(key.trim(), label);
 
     if (!added) {
         return res.status(409).json({
@@ -73,7 +73,7 @@ router.post('/gemini-keys', (req: Request, res: Response) => {
         });
     }
 
-    const status = geminiKeyManager.getStatus();
+    const status = groqKeyManager.getStatus();
     res.status(201).json({
         success: true,
         message: 'Key added to pool.',
@@ -82,11 +82,11 @@ router.post('/gemini-keys', (req: Request, res: Response) => {
 });
 
 /**
- * DELETE /api/v1/admin/gemini-keys
- * Remove a Gemini API key from the pool.
+ * DELETE /api/v1/admin/groq-keys
+ * Remove an API key from the pool.
  * Body: { key: string }
  */
-router.delete('/gemini-keys', (req: Request, res: Response) => {
+router.delete('/groq-keys', (req: Request, res: Response) => {
     const { key } = req.body;
 
     if (!key || typeof key !== 'string') {
@@ -96,7 +96,7 @@ router.delete('/gemini-keys', (req: Request, res: Response) => {
         });
     }
 
-    const removed = geminiKeyManager.removeKey(key.trim());
+    const removed = groqKeyManager.removeKey(key.trim());
 
     if (!removed) {
         return res.status(404).json({
@@ -105,7 +105,7 @@ router.delete('/gemini-keys', (req: Request, res: Response) => {
         });
     }
 
-    const status = geminiKeyManager.getStatus();
+    const status = groqKeyManager.getStatus();
     res.json({
         success: true,
         message: 'Key removed from pool.',

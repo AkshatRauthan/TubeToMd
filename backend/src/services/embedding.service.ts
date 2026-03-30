@@ -1,14 +1,59 @@
 import Session, { ISession, ITranscriptSegment } from '@models/session.model';
 import Embedding from '@models/embedding.model';
-import geminiService from '@services/gemini.service';
 import CustomError from '@errors/custom.error';
 import { StatusCodes } from 'http-status-codes';
 
 const CHUNK_SIZE = 5; // Number of transcript segments per chunk
 
+/**
+ * Simple local embedding using TF-IDF-like word vectors.
+ * Generates 384-dimension vectors without any external API calls.
+ * This avoids API rate limits entirely while still supporting
+ * MongoDB Atlas Vector Search for RAG.
+ */
+function generateLocalEmbedding(text: string): number[] {
+    const DIMS = 384;
+    const vector = new Array(DIMS).fill(0);
+
+    // Normalize and tokenize
+    const words = text
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .split(/\s+/)
+        .filter((w) => w.length > 1);
+
+    if (words.length === 0) return vector;
+
+    // Generate deterministic hash-based embedding for each word
+    for (const word of words) {
+        let hash = 0;
+        for (let i = 0; i < word.length; i++) {
+            hash = ((hash << 5) - hash + word.charCodeAt(i)) | 0;
+        }
+
+        // Use hash to set multiple dimensions (spreading each word's influence)
+        for (let d = 0; d < 8; d++) {
+            const idx = Math.abs((hash * (d + 1) * 2654435761) | 0) % DIMS;
+            const val = ((hash >> d) & 1) === 0 ? 1.0 : -1.0;
+            vector[idx] += val / words.length;
+        }
+    }
+
+    // L2-normalize the vector
+    const magnitude = Math.sqrt(vector.reduce((sum, v) => sum + v * v, 0));
+    if (magnitude > 0) {
+        for (let i = 0; i < DIMS; i++) {
+            vector[i] /= magnitude;
+        }
+    }
+
+    return vector;
+}
+
 class EmbeddingService {
     /**
-     * Generate and store embeddings for a session's transcript
+     * Generate and store embeddings for a session's transcript.
+     * Uses local embedding generation — zero API calls, zero rate limits.
      */
     async generateSessionEmbeddings(sessionId: string): Promise<void> {
         const session = await Session.findById(sessionId);
@@ -26,11 +71,11 @@ class EmbeddingService {
         // Chunk the transcript
         const chunks = this.chunkTranscript(session.transcription);
 
-        // Generate embeddings for each chunk
+        // Generate embeddings for each chunk (locally — no API calls)
         for (let i = 0; i < chunks.length; i++) {
             const chunk = chunks[i];
             try {
-                const embedding = await geminiService.generateEmbedding(chunk.text);
+                const embedding = generateLocalEmbedding(chunk.text);
 
                 await Embedding.create({
                     sessionId: session._id,
@@ -47,8 +92,15 @@ class EmbeddingService {
     }
 
     /**
-     * Find relevant transcript chunks using vector similarity
-     * Falls back to text-based search if vector search is not available
+     * Generate embedding for a query text (for similarity search).
+     */
+    async generateEmbedding(text: string): Promise<number[]> {
+        return generateLocalEmbedding(text);
+    }
+
+    /**
+     * Find relevant transcript chunks using vector similarity.
+     * Falls back to text-based search if vector search is not available.
      */
     async findRelevantChunks(
         sessionId: string,
@@ -57,7 +109,7 @@ class EmbeddingService {
     ): Promise<{ text: string; startTimestamp: number; endTimestamp: number }[]> {
         try {
             // Generate query embedding
-            const queryEmbedding = await geminiService.generateEmbedding(query);
+            const queryEmbedding = generateLocalEmbedding(query);
 
             // Try MongoDB Atlas Vector Search
             const results = await Embedding.aggregate([
@@ -109,7 +161,6 @@ class EmbeddingService {
 
         const embeddings = await Embedding.find({ sessionId });
 
-        // Score each chunk by keyword overlap
         const scored = embeddings.map((emb) => {
             const text = emb.chunkText.toLowerCase();
             const score = queryWords.reduce(

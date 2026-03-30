@@ -4,13 +4,13 @@
 
 ## Overview
 
-The backend handles authentication, session management, AI note generation via Google Gemini, RAG-based chat, PDF report generation, transcript translation, and Gemini API key rotation.
+The backend handles authentication, session management, AI note generation via Groq (Llama 3.3 70B), RAG-based chat, PDF report generation, transcript translation, and Groq API key rotation.
 
 ## Tech Stack
 
 - **Express 5** + **TypeScript** — REST API framework
 - **Mongoose 8** — MongoDB ODM
-- **@google/generative-ai** — Gemini 2.0 Flash + text-embedding-004
+- **groq-sdk** — Groq API client (Llama 3.3 70B + Llama 3.1 8B)
 - **pdfkit** — PDF report generation
 - **jsonwebtoken** + **bcryptjs** — JWT auth with bcrypt password hashing
 - **multer** — Audio chunk file uploads
@@ -39,8 +39,8 @@ See [.env.example](.env.example) for all required variables. Key ones:
 | Variable | Description |
 |----------|-------------|
 | `MONGODB_URI` | MongoDB connection string |
-| `GEMINI_API_KEY` | Primary Gemini API key |
-| `GEMINI_API_KEYS` | Comma-separated additional keys for rotation |
+| `GROQ_API_KEY` | Primary Groq API key |
+| `GROQ_API_KEYS` | Comma-separated additional keys for rotation |
 | `ADMIN_API_TOKEN` | Bearer token for admin endpoints |
 | `JWT_SECRET` / `JWT_REFRESH_SECRET` | JWT signing secrets |
 | `PYTHON_SERVICE_URL` | Python transcription service URL |
@@ -54,34 +54,42 @@ All routes prefixed with `/api/v1/`:
 - `/notes` — Generate AI notes, CRUD, export
 - `/chat` — RAG Q&A, history
 - `/annotations` — Timestamp annotations CRUD
-- `/admin` — Gemini key pool management (requires `ADMIN_API_TOKEN`)
+- `/admin` — Groq key pool management (requires `ADMIN_API_TOKEN`)
 
 ## Architecture
 
 ```
 src/
-├── config/          # Server, DB, CORS, Gemini configs
+├── config/          # Server, DB, CORS configs
 ├── controllers/     # Request handlers
 ├── middlewares/      # Auth (JWT), Upload (Multer)
 ├── models/          # Mongoose schemas
 ├── repositories/    # Data access layer
 ├── routes/v1/       # REST routes + Admin routes
 ├── services/        # Business logic
-│   ├── gemini.service.ts           # AI calls with auto key rotation
-│   ├── geminiKeyManager.service.ts # Circular key queue singleton
+│   ├── groq.service.ts             # AI calls with smart model routing (70B/8B)
+│   ├── groqKeyManager.service.ts   # Circular key queue singleton
+│   ├── embedding.service.ts        # Local hash-based embeddings (zero API calls)
 │   ├── report.service.ts           # PDF report generation
 │   └── ...
 ├── types/           # TypeScript interfaces
 └── utils/           # Error handling, logging
 ```
 
-## Gemini Key Rotation
+## Groq Key Rotation
 
-The `GeminiKeyManager` manages a pool of API keys:
+The `GroqKeyManager` manages a pool of API keys:
 - Round-robin key selection for each API call
 - Auto-marks exhausted keys on 429 errors with parsed refill timers
 - Background reactivation every 10 seconds
 - Runtime key management via admin endpoints
+
+## Smart Model Routing
+
+| Model | RPD Limit | Used For |
+|-------|-----------|----------|
+| `llama-3.3-70b-versatile` | 1,000 | Notes, Chat Q&A (quality-critical) |
+| `llama-3.1-8b-instant` | 14,400 | Translation (bulk tasks) |
 
 ## PDF Reports
 

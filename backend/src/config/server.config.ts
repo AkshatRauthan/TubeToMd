@@ -11,7 +11,7 @@ interface ServerConfig {
     GOOGLE_CLIENT_ID: string;
     GOOGLE_CLIENT_SECRET: string;
     GOOGLE_CALLBACK_URL: string;
-    GEMINI_API_KEY: string;
+    GROQ_API_KEY: string;
     PYTHON_SERVICE_URL: string;
     FRONTEND_URL: string;
     UPLOAD_DIR: string;
@@ -28,7 +28,7 @@ const serverConfig: ServerConfig = {
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
     GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/api/v1/auth/google/callback',
-    GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
+    GROQ_API_KEY: process.env.GROQ_API_KEY || '',
     PYTHON_SERVICE_URL: process.env.PYTHON_SERVICE_URL || 'http://localhost:8000',
     FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
     UPLOAD_DIR: process.env.UPLOAD_DIR || './uploads',

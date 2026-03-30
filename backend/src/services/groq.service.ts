@@ -1,18 +1,18 @@
-import geminiKeyManager from '@services/geminiKeyManager.service';
+import groqKeyManager from '@services/groqKeyManager.service';
 import { ITranscriptSegment } from '@models/session.model';
 import { NoteType } from '@models/note.model';
 import CustomError from '@errors/custom.error';
 import { StatusCodes } from 'http-status-codes';
 
 /**
- * Helper to parse and handle Gemini API errors with user-friendly messages
+ * Helper to parse and handle Groq API errors with user-friendly messages
  */
-function handleGeminiError(error: any, operation: string): never {
+function handleGroqError(error: any, operation: string): never {
     const errMsg = error?.message || String(error);
-    console.error(`[GeminiService] ${operation} failed:`, errMsg);
+    console.error(`[GroqService] ${operation} failed:`, errMsg);
 
-    // Quota/rate limit errors — propagate with special flag for key manager
-    if (errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('rate limit') || errMsg.includes('Too Many Requests')) {
+    // Quota/rate limit errors
+    if (errMsg.includes('429') || errMsg.includes('rate_limit') || errMsg.includes('Rate limit') || errMsg.includes('Too Many Requests')) {
         throw new CustomError(
             'AI service rate limit reached. Please wait a moment and try again.',
             StatusCodes.TOO_MANY_REQUESTS
@@ -20,9 +20,9 @@ function handleGeminiError(error: any, operation: string): never {
     }
 
     // Auth errors
-    if (errMsg.includes('401') || errMsg.includes('403') || errMsg.includes('API key')) {
+    if (errMsg.includes('401') || errMsg.includes('403') || errMsg.includes('API key') || errMsg.includes('authentication')) {
         throw new CustomError(
-            'AI service authentication error. Please contact support.',
+            'AI service authentication error. Please check your Groq API key.',
             StatusCodes.SERVICE_UNAVAILABLE
         );
     }
@@ -59,21 +59,36 @@ const PERSONA_PROMPTS: Record<string, string> = {
     custom: '', // Will use user's custom prompt
 };
 
-class GeminiService {
+// Model selection constants
+const MODEL_QUALITY = 'llama-3.3-70b-versatile';  // Quality tasks: notes, chat
+const MODEL_FAST = 'llama-3.1-8b-instant';         // Bulk tasks: translation
+
+class GroqService {
     /**
-     * Call Gemini with automatic key rotation.
+     * Call Groq with automatic key rotation.
      * If the current key hits rate-limit, it marks it exhausted
      * and retries with the next available key.
      */
-    private async callGemini(prompt: string, operation: string): Promise<string> {
-        const maxRetries = geminiKeyManager.getStatus().total;
+    private async callGroq(prompt: string, operation: string, model: string = MODEL_QUALITY): Promise<string> {
+        const maxRetries = groqKeyManager.getStatus().total;
         let lastError: any;
 
         for (let attempt = 0; attempt < Math.max(maxRetries, 1); attempt++) {
-            const { model, keyRef } = geminiKeyManager.getFlashModel();
+            const { client, keyRef } = groqKeyManager.getClient();
             try {
-                const result = await model.generateContent(prompt);
-                return result.response.text();
+                const completion = await client.chat.completions.create({
+                    model,
+                    messages: [
+                        {
+                            role: 'user',
+                            content: prompt,
+                        },
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 8192,
+                });
+
+                return completion.choices[0]?.message?.content || '';
             } catch (error: any) {
                 lastError = error;
                 const errMsg = String(error?.message || error);
@@ -81,58 +96,23 @@ class GeminiService {
                 // Rate limit / quota error — mark key as exhausted and try next
                 if (
                     errMsg.includes('429') ||
-                    errMsg.includes('quota') ||
-                    errMsg.includes('rate limit') ||
+                    errMsg.includes('rate_limit') ||
+                    errMsg.includes('Rate limit') ||
                     errMsg.includes('Too Many Requests') ||
                     errMsg.includes('RESOURCE_EXHAUSTED')
                 ) {
-                    console.warn(`[GeminiService] Key "${keyRef.label}" hit rate limit on attempt ${attempt + 1}, rotating...`);
-                    geminiKeyManager.markExhausted(keyRef, error);
-                    continue; // try next key
+                    console.warn(`[GroqService] Key "${keyRef.label}" hit rate limit on attempt ${attempt + 1}, rotating...`);
+                    groqKeyManager.markExhausted(keyRef, error);
+                    continue;
                 }
 
                 // Non-retryable error — throw immediately
-                handleGeminiError(error, operation);
+                handleGroqError(error, operation);
             }
         }
 
         // All keys exhausted
-        handleGeminiError(lastError, operation);
-    }
-
-    /**
-     * Call Gemini embeddings with automatic key rotation.
-     */
-    private async callEmbedding(text: string): Promise<number[]> {
-        const maxRetries = geminiKeyManager.getStatus().total;
-        let lastError: any;
-
-        for (let attempt = 0; attempt < Math.max(maxRetries, 1); attempt++) {
-            const { model, keyRef } = geminiKeyManager.getEmbeddingModel();
-            try {
-                const result = await model.embedContent(text);
-                return result.embedding.values;
-            } catch (error: any) {
-                lastError = error;
-                const errMsg = String(error?.message || error);
-
-                if (
-                    errMsg.includes('429') ||
-                    errMsg.includes('quota') ||
-                    errMsg.includes('rate limit') ||
-                    errMsg.includes('Too Many Requests') ||
-                    errMsg.includes('RESOURCE_EXHAUSTED')
-                ) {
-                    console.warn(`[GeminiService] Embedding key "${keyRef.label}" hit rate limit, rotating...`);
-                    geminiKeyManager.markExhausted(keyRef, error);
-                    continue;
-                }
-
-                handleGeminiError(error, 'generate embedding');
-            }
-        }
-
-        handleGeminiError(lastError, 'generate embedding');
+        handleGroqError(lastError, operation);
     }
 
     /**
@@ -173,9 +153,9 @@ class GeminiService {
 
         let text: string;
         try {
-            text = await this.callGemini(prompt, 'generate notes');
+            text = await this.callGroq(prompt, 'generate notes', MODEL_QUALITY);
         } catch (error) {
-            handleGeminiError(error, 'generate notes');
+            handleGroqError(error, 'generate notes');
         }
 
         // Extract mermaid code if present
@@ -295,7 +275,7 @@ class GeminiService {
             .join('\n\n');
 
         const historyText = chatHistory
-            .slice(-6) // Last 6 messages for context
+            .slice(-6)
             .map((msg) => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
             .join('\n');
 
@@ -317,29 +297,18 @@ Provide a clear, well-formatted answer:`;
 
         let answer: string;
         try {
-            answer = await this.callGemini(prompt, 'answer question');
+            answer = await this.callGroq(prompt, 'answer question', MODEL_QUALITY);
         } catch (error) {
-            handleGeminiError(error, 'answer question');
+            handleGroqError(error, 'answer question');
         }
 
         return { answer, sources: relevantChunks };
     }
 
     /**
-     * Generate embeddings for text using Gemini
-     */
-    async generateEmbedding(text: string): Promise<number[]> {
-        try {
-            return await this.callEmbedding(text);
-        } catch (error) {
-            handleGeminiError(error, 'generate embedding');
-        }
-    }
-
-    /**
-     * Translate transcript segments to a target language using Gemini.
+     * Translate transcript segments to a target language using Groq.
+     * Uses the fast 8B model to save quota — translation is mechanical.
      * Processes in batches to stay within token limits.
-     * Returns translated segments with original timestamps preserved.
      */
     async translateTranscription(
         segments: ITranscriptSegment[],
@@ -360,17 +329,17 @@ ${numberedLines}`;
 
             let responseText: string;
             try {
-                responseText = await this.callGemini(prompt, 'translate transcript');
+                // Use fast model for translation (saves 70B quota)
+                responseText = await this.callGroq(prompt, 'translate transcript', MODEL_FAST);
                 responseText = responseText.trim();
             } catch (error) {
-                handleGeminiError(error, 'translate transcript');
+                handleGroqError(error, 'translate transcript');
             }
             const lines = responseText.split('\n').filter((l) => l.trim());
 
             for (let j = 0; j < batch.length; j++) {
                 let translatedText = batch[j].text; // fallback to original
                 if (j < lines.length) {
-                    // Strip the [N] prefix if present
                     translatedText = lines[j].replace(/^\[\d+\]\s*/, '').trim();
                 }
                 translated.push({
@@ -385,4 +354,4 @@ ${numberedLines}`;
     }
 }
 
-export default new GeminiService();
+export default new GroqService();

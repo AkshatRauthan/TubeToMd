@@ -1,6 +1,6 @@
 # TubeToMD — Architecture & Technical Design
 
-> **Last Updated:** July 2025
+> **Last Updated:** March 2026
 > **Author:** Akshat Rauthan
 
 ---
@@ -17,7 +17,7 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
 ┌─────────────────────┐        ┌─────────────────────┐        ┌─────────────────────┐
 │                     │        │                     │        │                     │
 │   React Frontend    │◄──────►│  Node.js Backend    │◄──────►│  Python FastAPI Svc  │
-│  (Vite + Tailwind   │  REST  │  (Express + TS)     │  REST  │  (Whisper + YT API) │
+│  (Vite + Tailwind   │  REST  │  (Express + TS)     │  REST  │  (Groq Whisper API) │
 │   + shadcn/ui)      │        │                     │        │                     │
 │                     │        │                     │        │                     │
 └─────────────────────┘        └──────────┬──────────┘        └─────────────────────┘
@@ -25,10 +25,10 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
                                ┌──────────┼──────────┐
                                │          │          │
                         ┌──────▼───┐ ┌────▼─────┐ ┌──▼──────────┐
-                        │ MongoDB  │ │ Google   │ │ Google      │
-                        │ Atlas    │ │ Gemini   │ │ OAuth       │
-                        │ (Vector  │ │ (LLM +   │ │ Provider    │
-                        │  Search) │ │  Imagen) │ │             │
+                        │ MongoDB  │ │ Groq AI  │ │ Google      │
+                        │ Atlas    │ │ (LLM +   │ │ OAuth       │
+                        │ (Vector  │ │ Whisper) │ │ Provider    │
+                        │  Search) │ │          │ │             │
                         └──────────┘ └──────────┘ └─────────────┘
 ```
 
@@ -38,7 +38,7 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
 |---------|------|------|
 | **React Frontend** | 5173 | UI — 3-column session view, dashboard tiles, video player, Markdown editor, chat |
 | **Node.js Backend** | 5000 | API gateway, auth, session management, LLM orchestration, key rotation, PDF reports, export |
-| **Python FastAPI** | 8000 | Transcription (Whisper + youtube-transcript-api) |
+| **Python FastAPI** | 8000 | Transcription (Groq Whisper API + youtube-transcript-api) |
 | **MongoDB** | 27017 | Data persistence + vector search for RAG |
 
 ---
@@ -66,7 +66,7 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
 - **jsonwebtoken** — JWT auth (access + refresh tokens)
 - **bcryptjs** — password hashing
 - **multer** — audio chunk uploads (no video storage on backend)
-- **@google/generative-ai** — Gemini API client (with key rotation pool)
+- **groq-sdk** — Groq API client (with key rotation pool)
 - **pdfkit** — PDF report generation (title page, TOC, notes, transcript)
 - **node-cron** — scheduled cleanup tasks
 - **luxon** — date/time formatting
@@ -75,7 +75,7 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
 ### Python FastAPI Service
 - **FastAPI** — async REST API
 - **uvicorn** — ASGI server
-- **openai-whisper** — local audio transcription
+- **groq** — Groq Whisper API client (`whisper-large-v3-turbo`)
 - **youtube-transcript-api** — YouTube transcript fetching
 - **yt-dlp** — YouTube audio extraction
 - **ffmpeg** — audio processing
@@ -86,10 +86,11 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
 - **MongoDB Atlas Vector Search** — embeddings for RAG Q&A
 
 ### AI/ML
-- **Google Gemini 2.0 Flash** — text generation (summaries, Q&A, notes, translation)
-- **Gemini text-embedding-004** — 768-dim vector embeddings for RAG
-- **OpenAI Whisper** (configurable: base/small/medium/large-v3) — speech-to-text transcription
-- **Gemini Key Rotation** — circular queue of N keys with auto-exhaustion tracking and background reactivation
+- **Groq Llama 3.3 70B** (`llama-3.3-70b-versatile`) — text generation (summaries, Q&A, notes) — 1,000 RPD
+- **Groq Llama 3.1 8B** (`llama-3.1-8b-instant`) — translation — 14,400 RPD
+- **Groq Whisper** (`whisper-large-v3-turbo`) — speech-to-text transcription via API
+- **Local hash-based embeddings** — 384-dim vector embeddings for RAG (zero API calls)
+- **Groq Key Rotation** — circular queue of N keys with auto-exhaustion tracking and background reactivation
 
 ---
 
@@ -162,7 +163,7 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
   topic?: string,           // for topic-specific generation
   isEdited: boolean,
   mermaidCode?: string,     // for mind maps / flowcharts
-  imageUrl?: string,        // for Gemini Imagen diagrams
+  imageUrl?: string,        // for AI-generated diagrams
   exportFormats: string[],  // available export formats
   createdAt: Date,
   updatedAt: Date
@@ -195,7 +196,7 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
   chunkIndex: number,
   startTimestamp: number,
   endTimestamp: number,
-  embedding: number[],      // 768-dim vector (Gemini embedding)
+  embedding: number[],      // 384-dim vector (local hash-based embedding)
 }
 // Atlas Vector Search Index on 'embedding' field
 ```
@@ -281,36 +282,35 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
 ### 5.6 Admin Routes (`/api/v1/admin`) — Protected by `ADMIN_API_TOKEN` bearer auth
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/gemini-keys` | Get status of all API keys (masked keys, active/exhausted counts, refill times) |
-| POST | `/gemini-keys` | Add a new Gemini API key to the rotation pool (`{ key, label? }`) |
-| DELETE | `/gemini-keys` | Remove a key from the pool (`{ key }`) |
+| GET | `/groq-keys` | Get status of all API keys (masked keys, active/exhausted counts, refill times) |
+| POST | `/groq-keys` | Add a new Groq API key to the rotation pool (`{ key, label? }`) |
+| DELETE | `/groq-keys` | Remove a key from the pool (`{ key }`) |
 
 ### 5.7 Python FastAPI Endpoints (`http://localhost:8000`)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/transcribe/youtube` | Get YT transcript with timestamps |
 | POST | `/transcribe/upload` | Transcribe uploaded audio/video (legacy) |
-| POST | `/transcribe/chunk` | Transcribe a single audio chunk (Whisper) |
+| POST | `/transcribe/chunk` | Transcribe a single audio chunk (Groq Whisper) |
 | POST | `/transcribe/merge` | Merge chunk transcriptions |
 | GET | `/health` | Health check |
 
 ---
 
-## 6a. Gemini Key Rotation System
+## 6a. Groq Key Rotation System
 
-TubeToMD uses a **circular queue key manager** for resilient Gemini API access:
+TubeToMD uses a **circular queue key manager** for resilient Groq API access:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                   GeminiKeyManager (Singleton)               │
+│                   GroqKeyManager (Singleton)                 │
 ├─────────────────────────────────────────────────────────────┤
-│  keys: GeminiKey[]          ← loaded from GEMINI_API_KEY +  │
-│                                GEMINI_API_KEYS env vars     │
+│  keys: GroqKey[]            ← loaded from GROQ_API_KEY +    │
+│                                GROQ_API_KEYS env vars       │
 │  currentIndex: number       ← round-robin pointer           │
-│  clientCache: Map<string, GoogleGenerativeAI>               │
+│  clientCache: Map<string, Groq>                              │
 ├─────────────────────────────────────────────────────────────┤
-│  getFlashModel()    → next active key → gemini-2.0-flash    │
-│  getEmbeddingModel()→ next active key → text-embedding-004  │
+│  getClient()        → next active key → Groq client          │
 │  markExhausted(key) → parses retry-after, sets refill timer │
 │  addKey() / removeKey() / getStatus()                       │
 ├─────────────────────────────────────────────────────────────┤
@@ -320,10 +320,17 @@ TubeToMD uses a **circular queue key manager** for resilient Gemini API access:
 └─────────────────────────────────────────────────────────────┘
 ```
 
+### Smart Model Routing
+
+| Model | RPD Limit | Used For |
+|-------|-----------|----------|
+| `llama-3.3-70b-versatile` | 1,000 | Notes, Chat Q&A (quality-critical) |
+| `llama-3.1-8b-instant` | 14,400 | Translation (bulk tasks) |
+
 **Flow:**
-1. `callGemini(prompt)` gets the next key via round-robin
+1. `callGroq(prompt, model)` gets the next key via round-robin
 2. On success → return result
-3. On 429/RESOURCE_EXHAUSTED → `markExhausted(key, error)` parses retry-after seconds, sets `refillAt`, tries next key
+3. On 429/RATE_LIMITED → `markExhausted(key, error)` parses retry-after seconds, sets `refillAt`, tries next key
 4. If all keys exhausted → throws error with estimated wait time
 5. Background timer (every 10s) reactivates keys whose refill window has passed
 
@@ -342,7 +349,7 @@ User enters YT URL
     → Python uses youtube-transcript-api to fetch transcript
     → Returns timestamped transcript to Backend
     → Backend stores transcript in Session
-    → Backend generates embeddings (Gemini) and stores in Embeddings collection
+    → Backend generates local embeddings and stores in Embeddings collection
     → Session status → 'ready'
     → Frontend loads split-screen view
 ```
@@ -358,13 +365,13 @@ User selects video file (max 512MB / 60 min)
         → Frontend uploads audio chunk to POST /upload/chunk
         → Backend (multer) saves chunk temporarily
         → Backend forwards chunk to Python /transcribe/chunk (with chunk_offset)
-        → Python runs Whisper → returns offset-adjusted timestamps
+        → Python sends to Groq Whisper API → returns offset-adjusted timestamps
         → Backend stores result in memory, deletes chunk file
         → Backend returns ACK → Frontend frees chunk from memory (GC)
     → Frontend calls POST /upload/complete
     → Backend merges all chunk transcriptions via Python /transcribe/merge
     → Backend deduplicates overlapping edges, stores merged transcript
-    → Backend generates embeddings (Gemini)
+    → Backend generates local embeddings
     → Session status → 'ready'
     → For video replay: user selects same file from disk (URL.createObjectURL)
 ```
@@ -372,10 +379,10 @@ User selects video file (max 512MB / 60 min)
 ### 7.3 RAG Q&A Flow
 ```
 User asks question
-    → Backend generates embedding for question (Gemini)
+    → Backend generates local embedding for question
     → MongoDB Atlas Vector Search finds top-K relevant transcript chunks
     → Backend constructs prompt: system context + relevant chunks + user question
-    → Gemini generates answer with citations
+    → Groq Llama 70B generates answer with citations
     → Response includes answer + source timestamps
     → Frontend shows answer with clickable timestamp links
 ```
@@ -385,7 +392,7 @@ User asks question
 User selects type (summary/mindmap/flowchart/etc.) + optional persona + optional time range
     → Backend fetches transcript (full or filtered by time range)
     → Backend constructs specialized prompt based on type + persona
-    → Gemini generates structured Markdown / Mermaid code
+    → Groq Llama 70B generates structured Markdown / Mermaid code
     → Backend stores Note in database
     → Frontend renders the note (Markdown / Mermaid diagram)
     → User can edit, re-generate, or export
@@ -447,8 +454,8 @@ JWT_REFRESH_EXPIRY=7d
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 GOOGLE_CALLBACK_URL=http://localhost:5000/api/v1/auth/google/callback
-GEMINI_API_KEY=your_primary_gemini_api_key
-GEMINI_API_KEYS=key1,key2,key3              # Optional: additional keys for rotation pool
+GROQ_API_KEY=your_primary_groq_api_key
+GROQ_API_KEYS=key1,key2,key3              # Optional: additional keys for rotation pool
 ADMIN_API_TOKEN=your_admin_secret_token     # Bearer token for /api/v1/admin/* endpoints
 PYTHON_SERVICE_URL=http://localhost:8000
 FRONTEND_URL=http://localhost:5173
@@ -458,7 +465,7 @@ UPLOAD_DIR=./uploads
 ### Python FastAPI (`.env`)
 ```env
 PORT=8000
-WHISPER_MODEL=large-v3
+GROQ_API_KEY=your_groq_api_key
 MAX_FILE_SIZE_MB=500
 UPLOAD_DIR=./uploads
 ```
@@ -482,8 +489,7 @@ backend/
 │   ├── config/
 │   │   ├── cors.config.ts
 │   │   ├── database.config.ts
-│   │   ├── server.config.ts        # PORT, DB, JWT, OAuth, Gemini, Admin token
-│   │   ├── gemini.config.ts        # Legacy — models now created via keyManager
+│   │   ├── server.config.ts        # PORT, DB, JWT, OAuth, Groq, Admin token
 │   │   └── index.ts
 │   ├── controllers/
 │   │   ├── auth.controller.ts
@@ -520,17 +526,17 @@ backend/
 │   │       ├── notes.routes.ts
 │   │       ├── chat.routes.ts
 │   │       ├── annotation.routes.ts
-│   │       ├── admin.routes.ts      # NEW — Gemini key management (GET/POST/DELETE)
+│   │       ├── admin.routes.ts      # Groq key management (GET/POST/DELETE)
 │   │       └── index.ts
 │   ├── services/
 │   │   ├── auth.service.ts
 │   │   ├── session.service.ts       # + updateSession(), findByVideoUrl()
 │   │   ├── notes.service.ts
 │   │   ├── chat.service.ts
-│   │   ├── embedding.service.ts
-│   │   ├── gemini.service.ts        # Rewired: uses keyManager, callGemini(), callEmbedding()
-│   │   ├── geminiKeyManager.service.ts  # NEW — circular queue key rotation singleton
-│   │   ├── report.service.ts        # NEW — PDF report generation (pdfkit)
+│   │   ├── embedding.service.ts     # Local hash-based embeddings (zero API calls)
+│   │   ├── groq.service.ts          # LLM calls with smart model routing (70B/8B)
+│   │   ├── groqKeyManager.service.ts  # Circular queue key rotation singleton
+│   │   ├── report.service.ts        # PDF report generation (pdfkit)
 │   │   ├── export.service.ts
 │   │   ├── transcription.service.ts
 │   │   ├── annotation.service.ts
@@ -568,7 +574,7 @@ python/
 │   ├── services/
 │   │   ├── __init__.py
 │   │   ├── youtube_service.py
-│   │   └── whisper_service.py
+│   │   └── whisper_service.py    # Uses Groq Whisper API (whisper-large-v3-turbo)
 │   ├── models/
 │   │   ├── __init__.py
 │   │   └── schemas.py
@@ -617,7 +623,7 @@ frontend/
 - **No Video Storage:** Video never leaves the browser; only extracted audio chunks are sent to the backend
 - **Admin Auth:** Separate bearer token (`ADMIN_API_TOKEN`) for admin endpoints — not tied to user JWT
 - **API Key Masking:** Admin status endpoint masks key values (shows first 6 + last 4 chars only)
-- **Error Sanitization:** Raw Gemini API errors are never exposed to the frontend — `handleGeminiError()` maps to user-friendly messages
+- **Error Sanitization:** Raw Groq API errors are never exposed to the frontend — error handler maps to user-friendly messages
 - **CORS:** Whitelist frontend origin only
 - **No Persistent File Storage:** Transcripts stored in MongoDB, audio chunks are ephemeral
 
@@ -628,7 +634,7 @@ frontend/
 - Each service (Frontend, Backend, Python) will be deployed separately
 - Frontend → Vercel / Netlify
 - Backend → Railway / Render / AWS
-- Python → Railway / Render / AWS (needs GPU for Whisper ideally)
+- Python → Railway / Render / AWS (no GPU needed — uses Groq Whisper API)
 - MongoDB → MongoDB Atlas (managed)
 - No persistent file storage needed (transcripts stored in MongoDB, audio chunks are ephemeral)
 

@@ -1,6 +1,6 @@
 import Note, { INote } from '@models/note.model';
 import Session from '@models/session.model';
-import geminiService from '@services/gemini.service';
+import groqService from '@services/groq.service';
 import CustomError from '@errors/custom.error';
 import { StatusCodes } from 'http-status-codes';
 import { GenerateNotesRequest, UpdateNoteRequest } from '@types';
@@ -26,7 +26,7 @@ class NotesService {
             );
         }
 
-        const result = await geminiService.generateNotes(
+        const result = await groqService.generateNotes(
             session.transcription,
             request.type,
             {

@@ -13,7 +13,7 @@ const features = [
     {
         icon: Brain,
         title: 'AI-Powered Notes',
-        description: 'Generate summaries, detailed notes, mind maps, flowcharts, and flashcards powered by Gemini AI.',
+        description: 'Generate summaries, detailed notes, mind maps, flowcharts, and flashcards powered by Groq AI.',
     },
     {
         icon: MessageSquare,
@@ -30,7 +30,7 @@ const features = [
 const faqs = [
     {
         q: 'How does TubeToMD work?',
-        a: 'Simply paste a YouTube URL or upload a video file. Our system transcribes the audio using OpenAI Whisper, then uses Gemini AI to generate structured notes, summaries, mind maps, and more.',
+        a: 'Simply paste a YouTube URL or upload a video file. Our system transcribes the audio using Groq Whisper, then uses Groq AI to generate structured notes, summaries, mind maps, and more.',
     },
     {
         q: 'Is my video data stored on your servers?',
@@ -94,7 +94,7 @@ export function LandingPage() {
                         className="inline-flex items-center gap-2 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-1.5 text-sm text-[hsl(var(--muted-foreground))] mb-8"
                     >
                         <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--primary))]" />
-                        Powered by Gemini AI & Whisper
+                        Powered by Groq AI & Whisper
                     </motion.div>
 
                     {/* Logo */}
@@ -219,7 +219,7 @@ export function LandingPage() {
                 <div className="grid gap-8 md:grid-cols-3 stagger-children">
                     {[
                         { step: '01', title: 'Paste or Upload', desc: 'Drop a YouTube URL or upload a video. Audio extraction happens right in your browser.' },
-                        { step: '02', title: 'AI Processes', desc: 'Whisper transcribes the audio. Gemini generates notes, summaries, mind maps, and more.' },
+                        { step: '02', title: 'AI Processes', desc: 'Groq Whisper transcribes the audio. Groq AI generates notes, summaries, mind maps, and more.' },
                         { step: '03', title: 'Learn & Export', desc: 'Browse notes with synced timestamps, ask follow-up questions, and export in any format.' },
                     ].map((item) => (
                         <div key={item.step} className="card p-6 text-center card-hover">
@@ -247,7 +247,7 @@ export function LandingPage() {
                     <div className="grid sm:grid-cols-2 gap-4">
                         {[
                             'Browser-side audio extraction — privacy first',
-                            'AI-powered with Google Gemini 2.0 Flash',
+                            'AI-powered with Groq Llama 3.3 70B',
                             'RAG-based chat with timestamp citations',
                             'Mermaid mind maps & flowcharts',
                             'Multi-format export (MD, HTML, PDF)',
