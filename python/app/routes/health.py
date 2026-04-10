@@ -10,5 +10,5 @@ async def health_check():
     """Health check endpoint"""
     return HealthResponse(
         status="healthy",
-        whisper_model=settings.WHISPER_MODEL
+        transcription_engine="groq-whisper"
     )

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "stitch-loop": {
+      "source": "google-labs-code/stitch-skills",
+      "sourceType": "github",
+      "computedHash": "e04912a9719b855afa733cc928d30dde0b8a5b91707ca27b98f0efcb8d9310a9"
+    }
+  }
+}

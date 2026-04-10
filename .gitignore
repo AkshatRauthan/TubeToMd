@@ -71,3 +71,7 @@ pids
 /docs/imgs
 *.pdf
 *venv
+
+.agents
+.stitch
+stitch

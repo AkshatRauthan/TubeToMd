@@ -4,15 +4,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 import type { ApiResponse, Session, Note, NoteType, ChatMessage, Annotation } from '@/types';
+import { useSessionPolling } from '@/hooks/useSessionPolling';
 import ReactMarkdown from 'react-markdown';
 import mermaid from 'mermaid';
 import {
     Loader2, FileText, Brain, GitBranch, MessageSquare, CreditCard,
     BookOpen, Trash2, FolderOpen, ArrowLeft, Sparkles, Languages,
     RotateCcw, ChevronDown, Copy, Search, Clock, Hash, Type,
-    Youtube, Upload, AlertCircle, Download, Send, X,
-    GraduationCap, ToggleLeft, ToggleRight, Edit2, Check, Play,
-    StickyNote, Plus,
+    Youtube, AlertCircle, Download, X,
+    GraduationCap, Edit2, Save, Check, Play,
+    StickyNote, Plus, Globe2, FileDown, Eraser,
 } from 'lucide-react';
 
 mermaid.initialize({
@@ -203,23 +204,12 @@ export function SessionPage() {
     }, [id, fetchSession, fetchNotes, fetchChatHistory, fetchAnnotations]);
 
     // Polling for processing sessions
-    useEffect(() => {
-        if (!session || (session.status !== 'processing' && session.status !== 'transcribing')) return;
-        console.log(`[Session] Status=${session.status}, starting poll (${POLL_INTERVAL}ms)`);
-        const interval = setInterval(async () => {
-            console.log('[Session] Polling...');
-            const updated = await fetchSession();
-            if (updated.status === 'ready') {
-                console.log('[Session] Transcription complete!');
-                toast.success('Transcription complete!');
-                fetchNotes();
-            } else if (updated.status === 'failed') {
-                console.error('[Session] Transcription failed:', updated.errorMessage);
-                toast.error('Transcription failed');
-            }
-        }, POLL_INTERVAL);
-        return () => clearInterval(interval);
-    }, [session?.status, fetchSession, fetchNotes]);
+    useSessionPolling({
+        session,
+        fetchSession,
+        fetchNotes,
+        pollInterval: POLL_INTERVAL
+    });
 
     // Cleanup local video URL
     useEffect(() => {
@@ -436,6 +426,22 @@ export function SessionPage() {
         }
     };
 
+    const updateNote = async (noteId: string, content: string) => {
+        try {
+            const res = await api.put(`/notes/${noteId}`, { content, title: activeNote?.title });
+            const updated = res.data.data;
+            setNotes(prev => prev.map(n => n._id === noteId ? updated : n));
+            if (activeNote?._id === noteId) {
+                setActiveNote(updated);
+            }
+            toast.success('Note updated successfully');
+        } catch (err: any) {
+            const msg = err.response?.data?.message || 'Failed to update note';
+            toast.error(msg);
+            throw err;
+        }
+    };
+
     const handleExport = async (noteId: string, format: string) => {
         console.log(`[Session] Exporting note ${noteId} as ${format}`);
         try {
@@ -529,6 +535,35 @@ export function SessionPage() {
         }
     };
 
+    const handleDownloadReport = async () => {
+        try {
+            toast.info('Generating PDF report...');
+            const res = await api.get(`/sessions/${id}/report`, { responseType: 'blob' });
+            const url = URL.createObjectURL(res.data);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${session?.title || 'report'}.pdf`;
+            a.click();
+            URL.revokeObjectURL(url);
+            toast.success('Report downloaded!');
+        } catch (err: any) {
+            const msg = err.response?.data?.message || 'Failed to generate report';
+            toast.error(msg);
+        }
+    };
+
+    const handleClearChat = async () => {
+        if (!confirm('Clear all chat messages for this session?')) return;
+        try {
+            await api.delete(`/chat/${id}`);
+            setChatMessages([]);
+            toast.success('Chat history cleared');
+        } catch (err: any) {
+            const msg = err.response?.data?.message || 'Failed to clear chat';
+            toast.error(msg);
+        }
+    };
+
     // ─── Computed ────────────────────────────────────────────────
 
     const isYouTube = session?.videoType === 'youtube';
@@ -587,222 +622,189 @@ export function SessionPage() {
     // ─── Note Viewer Modal ───────────────────────────────────────
 
     if (activeNote) {
-        return <NoteViewerFull note={activeNote} onBack={() => setActiveNote(null)} onExport={handleExport} onSeek={seekTo} onDelete={deleteNote} />;
+        return <NoteViewerFull note={activeNote} onBack={() => setActiveNote(null)} onExport={handleExport} onSeek={seekTo} onDelete={deleteNote} onUpdate={updateNote} />;
     }
 
     // ─── Main 3-Column Layout ────────────────────────────────────
 
     return (
-        <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
-
+        <main className="flex-1 mt-16 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-4rem)]">
             {/* LEFT COLUMN: Video + Info */}
-            <div className="w-[320px] flex-shrink-0 flex flex-col border-r border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+            <section className="lg:col-span-4 flex flex-col gap-6 overflow-hidden">
                 {/* Back button */}
-                <div className="px-4 py-3 border-b border-[hsl(var(--border))] flex items-center gap-2">
+                <div className="glass-panel px-4 py-3 rounded-xl flex items-center gap-2 mb-[-12px]">
                     <button
                         onClick={() => navigate('/dashboard')}
                         className="p-1.5 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary))] transition"
                     >
                         <ArrowLeft className="h-4 w-4" />
                     </button>
-                    <span className="text-sm font-medium text-[hsl(var(--muted-foreground))]">Back to Dashboard</span>
+                    <span className="text-sm font-medium">Back to Dashboard</span>
                 </div>
 
-                {/* Video Player (compact) */}
-                <div className="bg-black aspect-video w-full flex-shrink-0 relative" id="yt-player-container">
+                {/* Video Player Placeholder */}
+                <div className="relative aspect-video rounded-xl overflow-hidden glass-panel group" id="yt-player-container">
                     {isYouTube && youtubeVideoId ? (
                         <div id="yt-player" className="w-full h-full" />
                     ) : isUploaded && localVideoUrl ? (
                         <video
                             ref={videoRef}
                             src={localVideoUrl}
-                            className="w-full h-full"
+                            className="w-full h-full object-contain bg-black"
                             controls
                             onTimeUpdate={() => {
                                 if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
                             }}
                         />
                     ) : isUploaded ? (
-                        <div className="flex h-full flex-col items-center justify-center gap-3 text-white/60 p-4">
-                            <FolderOpen className="h-8 w-8" />
-                            <p className="text-xs text-center">Select your video file</p>
-                            <label className="cursor-pointer btn-primary rounded-lg px-4 py-1.5 text-xs font-medium">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/50 text-white p-4">
+                            <FolderOpen className="h-8 w-8 text-[hsl(var(--primary))]" />
+                            <p className="text-xs text-center opacity-80">Select your video file</p>
+                            <label className="cursor-pointer bg-pink-500 hover:bg-pink-400 text-white rounded-lg px-4 py-1.5 text-xs font-medium transition-all">
                                 <input type="file" accept="video/*,audio/*" onChange={handleLocalVideoSelect} className="hidden" />
                                 Choose File
                             </label>
                         </div>
-                    ) : isProcessing ? (
-                        <div className="flex h-full items-center justify-center">
-                            <Loader2 className="h-8 w-8 animate-spin text-white/40" />
-                        </div>
                     ) : (
-                        <div className="flex h-full items-center justify-center text-white/40 text-sm">No video</div>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                            {isFailed ? (
+                                <AlertCircle className="h-10 w-10 text-red-500 opacity-80" />
+                            ) : (
+                                <Loader2 className="h-8 w-8 animate-spin text-[hsl(var(--primary))]" />
+                            )}
+                            <p className="text-sm font-medium text-[hsl(var(--muted-foreground))]">
+                                {isFailed ? 'Error loading video' : 'Loading player...'}
+                            </p>
+                        </div>
                     )}
                 </div>
 
-                {/* Session Title - Editable */}
-                <div className="px-4 py-3 border-b border-[hsl(var(--border))]">
-                    {isEditingTitle ? (
-                        <div className="flex items-center gap-2">
+                {/* Info Card */}
+                <div className="glass-panel p-6 rounded-xl flex flex-col gap-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        {isEditingTitle ? (
                             <input
-                                type="text"
+                                autoFocus
                                 value={editedTitle}
                                 onChange={(e) => setEditedTitle(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleUpdateTitle();
-                                    if (e.key === 'Escape') setIsEditingTitle(false);
-                                }}
-                                className="flex-1 bg-[hsl(var(--secondary))] border border-[hsl(var(--input))] rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
-                                autoFocus
+                                onBlur={handleUpdateTitle}
+                                onKeyDown={(e) => e.key === 'Enter' && handleUpdateTitle()}
+                                className="text-xl font-bold font-headline tracking-tight text-on-surface bg-transparent border-b border-[hsl(var(--primary))] outline-none px-1 py-0.5"
                             />
-                            <button onClick={handleUpdateTitle} className="p-1 text-emerald-400 hover:bg-emerald-500/10 rounded">
-                                <Check className="h-4 w-4" />
-                            </button>
-                            <button onClick={() => setIsEditingTitle(false)} className="p-1 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))] rounded">
-                                <X className="h-4 w-4" />
-                            </button>
-                        </div>
-                    ) : (
-                        <div
-                            className="flex items-center gap-2 group cursor-pointer"
-                            onClick={() => { setEditedTitle(session.title); setIsEditingTitle(true); }}
-                        >
-                            <h2 className="text-sm font-semibold leading-snug flex-1">{session.title}</h2>
-                            <Edit2 className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))] opacity-0 group-hover:opacity-100 transition" />
-                        </div>
-                    )}
-                </div>
-
-                {/* Metadata Tags */}
-                <div className="px-4 py-3 border-b border-[hsl(var(--border))] space-y-3">
-                    <div className="flex flex-wrap gap-2">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium ${
-                            isYouTube ? 'bg-red-500/10 text-red-400' : 'bg-blue-500/10 text-blue-400'
-                        }`}>
-                            {isYouTube ? <Youtube className="h-3 w-3" /> : <Upload className="h-3 w-3" />}
-                            {session.videoType}
-                        </span>
-
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium ${
-                            isReady ? 'bg-emerald-500/10 text-emerald-400'
-                                : isFailed ? 'bg-red-500/10 text-red-400'
-                                : 'bg-amber-500/10 text-amber-400'
-                        }`}>
-                            {isProcessing && <Loader2 className="h-3 w-3 animate-spin" />}
-                            {session.status}
-                        </span>
-
-                        {session.duration && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))]">
-                                <Clock className="h-3 w-3" />
-                                {Math.floor(session.duration / 60)}m {Math.floor(session.duration % 60)}s
-                            </span>
-                        )}
-                    </div>
-
-                    {session.metadata?.language && (
-                        <div className="flex items-center gap-2 text-xs text-[hsl(var(--muted-foreground))]">
-                            <Languages className="h-3.5 w-3.5" />
-                            <span className="uppercase font-medium">{session.metadata.language}</span>
-                            {session.metadata.translatedTo && (
-                                <span className="text-[hsl(var(--primary))]">
-                                    → {LANGUAGES.find(l => l.code === session.metadata?.translatedTo)?.label || session.metadata.translatedTo}
-                                </span>
-                            )}
-                        </div>
-                    )}
-
-                    {isFailed && session.errorMessage && (
-                        <div className="flex items-start gap-2 text-xs text-red-400 bg-red-500/10 rounded-lg p-2">
-                            <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
-                            <span>{session.errorMessage}</span>
-                        </div>
-                    )}
-                </div>
-
-                {/* Video ID / Channel Info */}
-                <div className="px-4 py-3 border-b border-[hsl(var(--border))] space-y-2 text-xs text-[hsl(var(--muted-foreground))]">
-                    {isYouTube && youtubeVideoId && (
-                        <div className="flex items-center justify-between">
-                            <span className="font-medium">Video ID:</span>
-                            <code className="bg-[hsl(var(--secondary))] px-2 py-0.5 rounded text-[10px]">{youtubeVideoId}</code>
-                        </div>
-                    )}
-                    {session.metadata?.channel && (
-                        <div className="flex items-center justify-between">
-                            <span className="font-medium">Channel:</span>
-                            <span className="truncate ml-2">{session.metadata.channel}</span>
-                        </div>
-                    )}
-                    <div className="flex items-center justify-between">
-                        <span className="font-medium">Created:</span>
-                        <span>{new Date(session.createdAt).toLocaleDateString()}</span>
-                    </div>
-                </div>
-
-                {/* Generated Notes List */}
-                <div className="flex-1 overflow-y-auto">
-                    <div className="px-4 py-3">
-                        <h3 className="text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-2">
-                            Generated Notes ({notes.length})
-                        </h3>
-                        {notes.length === 0 ? (
-                            <p className="text-xs text-[hsl(var(--muted-foreground))]/60">
-                                No notes yet. Use the actions panel to generate.
-                            </p>
                         ) : (
-                            <div className="space-y-1.5">
-                                {notes.map(note => (
-                                    <div
-                                        key={note._id}
-                                        className="flex items-center justify-between rounded-lg border border-[hsl(var(--border))] p-2 hover:bg-[hsl(var(--secondary))] cursor-pointer transition group"
-                                        onClick={() => setActiveNote(note)}
-                                    >
-                                        <div className="flex-1 min-w-0">
-                                            <span className="text-xs font-medium truncate block">{note.title}</span>
-                                            <span className="text-[10px] text-[hsl(var(--muted-foreground))] capitalize">{note.type.replace('_', ' ')}</span>
-                                        </div>
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); deleteNote(note._id); }}
-                                            className="p-1 rounded opacity-0 group-hover:opacity-100 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--destructive))] transition"
-                                        >
-                                            <Trash2 className="h-3 w-3" />
-                                        </button>
-                                    </div>
-                                ))}
+                            <h1 
+                                onClick={() => { setEditedTitle(session.title); setIsEditingTitle(true); }}
+                                className="text-xl font-bold font-headline tracking-tight text-on-surface hover:text-[hsl(var(--primary))] cursor-pointer transition-colors flex items-center gap-2 group/title"
+                                title="Click to edit"
+                            >
+                                {session.title}
+                                <Edit2 className="h-4 w-4 opacity-0 group-hover/title:opacity-100 transition-opacity text-[hsl(var(--primary))]" />
+                            </h1>
+                        )}
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold tracking-wide border ${
+                            session.status === 'ready' 
+                                ? 'bg-secondary-container/20 text-secondary border-secondary/20' 
+                                : session.status === 'failed'
+                                    ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                                    : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                        }`}>
+                            {session.status.charAt(0).toUpperCase() + session.status.slice(1)}
+                        </span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 pt-1 border-t border-[hsl(var(--border))]/50">
+                        {session.videoType === 'youtube' && (
+                            <div className="flex items-center gap-1.5 text-xs text-slate-400 bg-black/20 px-2 py-1 rounded-md">
+                                <Youtube className="h-3 w-3 text-red-500" />
+                                <span>YouTube</span>
+                            </div>
+                        )}
+                        <div className="flex items-center gap-1.5 text-xs border border-[hsl(var(--border))] text-slate-400 px-2 py-1 rounded-md">
+                            <Clock className="h-3 w-3" />
+                            <span>
+                                {session.duration 
+                                    ? `${Math.floor(session.duration / 60)}:${(session.duration % 60).toString().padStart(2, '0')}`
+                                    : 'Unknown length'}
+                            </span>
+                        </div>
+                        {session.metadata?.language && (
+                            <div className="flex items-center gap-1.5 text-xs text-slate-400 px-2 py-1 rounded-md bg-black/20">
+                                <Globe2 className="h-3 w-3 text-[hsl(var(--primary))]" />
+                                <span className="uppercase">{session.metadata.language}</span>
                             </div>
                         )}
                     </div>
                 </div>
-            </div>
+
+                {/* Generated Notes (Moved here if any, or we can leave it out. The original had them on the left) */}
+                {notes.length > 0 && (
+                    <div className="glass-panel p-4 rounded-xl flex-1 overflow-y-auto">
+                        <div className="flex items-center gap-2 mb-3">
+                            <FileText className="h-4 w-4 text-[hsl(var(--primary))]" />
+                            <span className="text-sm font-semibold">Generated Notes</span>
+                        </div>
+                        <div className="space-y-2">
+                            {notes.map(note => (
+                                <div
+                                    key={note._id}
+                                    onClick={() => setActiveNote(note)}
+                                    className="group p-3 rounded-lg border border-[hsl(var(--border))] hover:border-[hsl(var(--primary))]/40 hover:bg-[hsl(var(--primary))]/5 cursor-pointer transition-all text-sm flex gap-3 items-start"
+                                >
+                                    <div className="mt-0.5 p-1.5 rounded bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]">
+                                        {ACTION_BUTTONS.find(a => a.type === note.type)?.icon({ className: "h-3.5 w-3.5" }) || <FileText className="h-3.5 w-3.5" />}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-medium truncate">{note.title}</p>
+                                        <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1 truncate">
+                                            {note.type.replace('_', ' ')} &middot; {new Date(note.createdAt).toLocaleDateString()}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); deleteNote(note._id); }}
+                                        className="p-1.5 rounded opacity-0 group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-400 text-[hsl(var(--muted-foreground))] transition-all"
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </section>
 
             {/* CENTER COLUMN: Transcript */}
-            <div className="flex-1 flex flex-col min-w-0">
-                {/* Transcript Toolbar */}
-                <div className="border-b border-[hsl(var(--border))] bg-[hsl(var(--card))]">
-                    <div className="px-4 py-2.5 flex items-center gap-3">
-                        <button
-                            onClick={copyTranscript}
-                            disabled={!hasTranscript}
-                            className="btn-primary rounded-lg px-4 py-2 text-sm font-medium flex items-center gap-2 disabled:opacity-40 flex-shrink-0"
-                        >
-                            <Copy className="h-4 w-4" />
-                            {copiedTranscript ? 'Copied!' : 'Copy Transcript'}
-                        </button>
+            <section className="lg:col-span-4 glass-panel rounded-xl flex flex-col overflow-hidden">
+                <div className="p-4 border-b border-[hsl(var(--border))] flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                        <h2 className="font-bold text-on-surface flex items-center gap-2">
+                            <span className="material-symbols-outlined text-pink-500 text-lg">description</span>
+                            Transcript
+                        </h2>
+                        {hasTranscript && (
+                            <button
+                                onClick={copyTranscript}
+                                className="p-1.5 rounded-lg text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))] hover:text-[hsl(var(--foreground))] transition"
+                                title="Copy all transcript text"
+                            >
+                                {copiedTranscript ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                            </button>
+                        )}
+                    </div>
 
-                        <div className="flex-1 relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+                    <div className="flex gap-2">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" />
                             <input
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Search Transcript"
-                                className="w-full rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--secondary))] pl-9 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--ring))] transition-all"
+                                placeholder="Search transcript..."
+                                className="w-full bg-surface-container-highest/50 border-none rounded-lg py-2 pl-9 pr-8 text-sm text-on-surface focus:ring-2 focus:ring-pink-500/50 placeholder-slate-500 transition-all duration-300"
                             />
                             {searchQuery && (
                                 <button
                                     onClick={() => setSearchQuery('')}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] hover:text-white"
                                 >
                                     <X className="h-3.5 w-3.5" />
                                 </button>
@@ -815,18 +817,20 @@ export function SessionPage() {
                                 <button
                                     onClick={() => setShowLangMenu(!showLangMenu)}
                                     disabled={translating}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-[hsl(var(--border))] px-3 py-2 text-sm hover:bg-[hsl(var(--secondary))] transition disabled:opacity-50 whitespace-nowrap"
+                                    className="inline-flex items-center gap-1.5 rounded-lg bg-surface-container-highest/50 px-3 py-2 text-sm hover:bg-white/10 transition disabled:opacity-50 whitespace-nowrap h-full"
                                 >
                                     {translating ? (
                                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                     ) : (
                                         <Languages className="h-3.5 w-3.5" />
                                     )}
-                                    {isTranslated
-                                        ? LANGUAGES.find(l => l.code === session.metadata?.translatedTo)?.label || 'Translated'
-                                        : session.metadata?.language
-                                            ? `${session.metadata.language.charAt(0).toUpperCase() + session.metadata.language.slice(1)} (auto-generated)`
-                                            : 'Language'}
+                                    <span className="max-w-[80px] truncate">
+                                        {isTranslated
+                                            ? LANGUAGES.find(l => l.code === session.metadata?.translatedTo)?.label || 'Translated'
+                                            : session.metadata?.language
+                                                ? `${session.metadata.language.charAt(0).toUpperCase() + session.metadata.language.slice(1)} (Auto)`
+                                                : 'Lang'}
+                                    </span>
                                     <ChevronDown className="h-3 w-3" />
                                 </button>
 
@@ -837,12 +841,12 @@ export function SessionPage() {
                                             animate={{ opacity: 1, y: 0, scale: 1 }}
                                             exit={{ opacity: 0, y: -4, scale: 0.95 }}
                                             transition={{ duration: 0.12 }}
-                                            className="absolute top-full right-0 mt-1 z-50 w-52 max-h-64 overflow-y-auto rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl"
+                                            className="absolute top-full right-0 mt-1 z-50 w-48 max-h-64 overflow-y-auto rounded-xl border border-[hsl(var(--border))] bg-surface-bright shadow-xl"
                                         >
                                             {isTranslated && (
                                                 <button
                                                     onClick={handleRestoreOriginal}
-                                                    className="w-full text-left px-3 py-2 text-sm text-[hsl(var(--primary))] font-medium hover:bg-[hsl(var(--secondary))] transition flex items-center gap-2 border-b border-[hsl(var(--border))]"
+                                                    className="w-full text-left px-3 py-2 text-sm text-[hsl(var(--primary))] font-medium hover:bg-white/10 transition flex items-center gap-2 border-b border-[hsl(var(--border))]"
                                                 >
                                                     <RotateCcw className="h-3.5 w-3.5" />
                                                     Restore Original
@@ -852,7 +856,7 @@ export function SessionPage() {
                                                 <button
                                                     key={lang.code}
                                                     onClick={() => handleTranslate(lang.code)}
-                                                    className={`w-full text-left px-3 py-2 text-sm hover:bg-[hsl(var(--secondary))] transition ${
+                                                    className={`w-full text-left px-3 py-2 text-sm hover:bg-white/10 transition ${
                                                         session.metadata?.translatedTo === lang.code
                                                             ? 'text-[hsl(var(--primary))] font-medium'
                                                             : 'text-[hsl(var(--foreground))]'
@@ -872,8 +876,7 @@ export function SessionPage() {
                     </div>
                 </div>
 
-                {/* Transcript Body */}
-                <div ref={transcriptContainerRef} className="flex-1 overflow-y-auto">
+                <div ref={transcriptContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
                     {isProcessing ? (
                         <div className="flex flex-col items-center justify-center h-full gap-4">
                             <Loader2 className="h-6 w-6 animate-spin text-[hsl(var(--primary))]" />
@@ -882,16 +885,8 @@ export function SessionPage() {
                                     {session.status === 'processing' ? 'Preparing transcription...' : 'Transcribing video...'}
                                 </p>
                                 <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
-                                    This may take a minute. The transcript will appear automatically.
+                                    This may take a minute.
                                 </p>
-                            </div>
-                            <div className="w-full max-w-md px-6 space-y-2 opacity-40">
-                                {Array.from({ length: 8 }).map((_, i) => (
-                                    <div key={i} className="flex gap-3 animate-pulse">
-                                        <div className="h-3 w-12 rounded bg-[hsl(var(--muted))]" />
-                                        <div className="h-3 rounded bg-[hsl(var(--muted))]" style={{ width: `${40 + Math.random() * 50}%` }} />
-                                    </div>
-                                ))}
                             </div>
                         </div>
                     ) : isFailed ? (
@@ -907,7 +902,7 @@ export function SessionPage() {
                             No transcript available
                         </div>
                     ) : (
-                        <div className="p-4 space-y-1">
+                        <div className="space-y-1">
                             {filteredTranscript.map((seg, idx) => {
                                 const active = isActiveSegment(seg);
                                 const segAnnotations = annotations.filter(a => 
@@ -919,18 +914,20 @@ export function SessionPage() {
                                         <div
                                             ref={active ? activeSegmentRef : undefined}
                                             onClick={() => seekTo(seg.start)}
-                                            className={`flex gap-4 rounded-xl px-4 py-3 cursor-pointer transition-all duration-200 relative ${
+                                            className={`flex gap-4 p-3 rounded-lg cursor-pointer transition-all duration-200 relative ${
                                                 active
-                                                    ? 'bg-[hsl(var(--primary))]/15 text-[hsl(var(--foreground))] border-l-3 border-[hsl(var(--primary))] shadow-sm'
-                                                    : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))] border-l-3 border-transparent'
+                                                    ? 'bg-pink-500/10 border-l-2 border-pink-500 shadow-[0_0_15px_rgba(219,39,119,0.1)]'
+                                                    : 'hover:bg-white/5 border-l-2 border-transparent'
                                             }`}
                                         >
-                                            <span className={`flex-shrink-0 font-mono text-sm w-14 pt-0.5 ${
-                                                active ? 'text-[hsl(var(--primary))] font-bold' : 'text-[hsl(var(--primary))]/60'
+                                            <span className={`flex-shrink-0 font-mono text-sm w-12 pt-0.5 ${
+                                                active ? 'text-[hsl(var(--primary))] font-bold' : 'text-secondary'
                                             }`}>
                                                 {formatTime(seg.start)}
                                             </span>
-                                            <span className="flex-1 leading-relaxed text-base">{seg.text}</span>
+                                            <span className={`flex-1 text-sm transition-colors ${active ? 'text-white' : 'text-slate-300 group-hover:text-white'}`}>
+                                                {seg.text}
+                                            </span>
                                             
                                             {/* Action buttons on hover */}
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -957,7 +954,7 @@ export function SessionPage() {
                                         
                                         {/* Show annotations for this timestamp */}
                                         {segAnnotations.map(ann => (
-                                            <div key={ann._id} className="ml-20 mt-1 mb-2 flex items-start gap-2 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-sm">
+                                            <div key={ann._id} className="ml-16 mt-1 mb-2 flex items-start gap-2 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-sm">
                                                 <StickyNote className="h-3.5 w-3.5 text-amber-400 mt-0.5 flex-shrink-0" />
                                                 <span className="flex-1 text-amber-200">{ann.note || ann.selectedText}</span>
                                                 <button
@@ -974,7 +971,7 @@ export function SessionPage() {
                                             <motion.div
                                                 initial={{ opacity: 0, y: -4 }}
                                                 animate={{ opacity: 1, y: 0 }}
-                                                className="ml-20 mt-2 mb-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-3 shadow-lg"
+                                                className="ml-16 mt-2 mb-2 rounded-xl border border-[hsl(var(--border))] bg-surface p-3 shadow-lg"
                                             >
                                                 <div className="flex items-center gap-2 mb-2 text-xs text-[hsl(var(--muted-foreground))]">
                                                     <StickyNote className="h-3.5 w-3.5" />
@@ -990,19 +987,19 @@ export function SessionPage() {
                                                             if (e.key === 'Escape') setShowAnnotationPopup(null);
                                                         }}
                                                         placeholder="Enter your note..."
-                                                        className="flex-1 bg-[hsl(var(--secondary))] border border-[hsl(var(--input))] rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
+                                                        className="flex-1 bg-surface-container-highest border border-none rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500/50 text-white"
                                                         autoFocus
                                                     />
                                                     <button
                                                         onClick={() => handleAddAnnotation(seg.start)}
                                                         disabled={!annotationNote.trim()}
-                                                        className="btn-primary rounded-lg px-3 py-2 text-sm disabled:opacity-40"
+                                                        className="bg-pink-500 text-white rounded-lg px-3 py-2 text-sm disabled:opacity-40 hover:bg-pink-400"
                                                     >
                                                         <Plus className="h-4 w-4" />
                                                     </button>
                                                     <button
                                                         onClick={() => setShowAnnotationPopup(null)}
-                                                        className="p-2 rounded-lg hover:bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))]"
+                                                        className="p-2 rounded-lg hover:bg-white/10 text-[hsl(var(--muted-foreground))]"
                                                     >
                                                         <X className="h-4 w-4" />
                                                     </button>
@@ -1016,162 +1013,191 @@ export function SessionPage() {
                     )}
                 </div>
 
-                {/* Transcript Footer */}
                 {hasTranscript && (
-                    <div className="border-t border-[hsl(var(--border))] px-4 py-3 flex items-center justify-between text-sm text-[hsl(var(--muted-foreground))] bg-[hsl(var(--card))]">
-                        <div className="flex items-center gap-6">
+                    <div className="border-t border-[hsl(var(--border))] px-4 py-3 flex items-center justify-between text-xs text-[hsl(var(--muted-foreground))] bg-surface-container-highest/20">
+                        <div className="flex items-center gap-4">
                             <span className="flex items-center gap-1.5">
-                                <Type className="h-4 w-4" />
-                                Word Count: {wordCount.toLocaleString()}
+                                <Type className="h-3.5 w-3.5" />
+                                {wordCount.toLocaleString()} words
                             </span>
                             <span className="flex items-center gap-1.5">
-                                <Hash className="h-4 w-4" />
-                                Character count: {charCount.toLocaleString()}
+                                <Hash className="h-3.5 w-3.5" />
+                                {charCount.toLocaleString()} chars
                             </span>
                         </div>
                         <button
                             onClick={() => setAutoScroll(!autoScroll)}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition ${
+                            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition ${
                                 autoScroll 
-                                    ? 'bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]' 
-                                    : 'hover:bg-[hsl(var(--secondary))]'
+                                    ? 'text-pink-400 bg-pink-500/10 uppercase tracking-widest font-bold text-[10px]' 
+                                    : 'hover:text-white uppercase tracking-widest font-bold text-[10px]'
                             }`}
                         >
-                            {autoScroll ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
-                            <span className="font-medium">Autoscroll</span>
+                            {autoScroll ? 'Auto-Sync Active' : 'Auto-Sync Off'}
                         </button>
                     </div>
                 )}
-            </div>
+            </section>
 
-            {/* RIGHT COLUMN: Actions */}
-            <div className="w-[340px] flex-shrink-0 flex flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+            {/* RIGHT COLUMN: Actions & Chat */}
+            <section className="lg:col-span-4 flex flex-col gap-6 overflow-hidden">
+                {/* Action Buttons */}
+                <div className="grid grid-cols-1 gap-4">
+                    {ACTION_BUTTONS.map(({ type, label, icon: Icon }) => (
+                        <button
+                            key={type}
+                            onClick={() => generateNote(type)}
+                            disabled={generating !== null || !isReady || !hasTranscript}
+                            className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-primary-container to-primary text-white font-bold shadow-[0_0_20px_rgba(219,39,119,0.2)] hover:shadow-[0_0_30px_rgba(219,39,119,0.4)] active:scale-95 transition-all duration-300 group disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                        >
+                            <span className="flex items-center gap-3">
+                                {generating === type ? (
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                ) : (
+                                    <Icon className="h-5 w-5" />
+                                )}
+                                {generating === type ? `Generating ${label}...` : label}
+                            </span>
+                            <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                        </button>
+                    ))}
+                    {generating && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="flex items-center gap-2 text-xs text-[hsl(var(--primary))] bg-[hsl(var(--primary))]/5 rounded-lg px-3 py-2 mt-[-8px] justify-center"
+                        >
+                            <Sparkles className="h-3 w-3 animate-pulse" />
+                            AI is generating your {generating.replace('_', ' ')}...
+                        </motion.div>
+                    )}
+                </div>
+
+                {/* Download Report */}
+                <button
+                    onClick={handleDownloadReport}
+                    disabled={!isReady || !hasTranscript}
+                    className="flex items-center justify-center gap-2 p-3 rounded-xl bg-surface-container-highest/50 border border-pink-900/20 text-on-surface/80 font-semibold hover:bg-pink-500/10 hover:border-pink-500/30 hover:text-pink-300 active:scale-95 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                    <FileDown className="h-4 w-4" />
+                    Download Full Report (PDF)
+                </button>
+
                 {/* Chat Section */}
-                <div className="border-b border-[hsl(var(--border))]">
-                    <div className="px-4 py-3 flex items-center gap-2">
-                        <MessageSquare className="h-4 w-4 text-[hsl(var(--primary))]" />
-                        <span className="text-sm font-semibold">Chat with the transcript</span>
+                <div className="glass-panel flex-1 rounded-xl flex flex-col overflow-hidden">
+                    <div className="p-4 border-b border-pink-900/10 flex items-center justify-between">
+                        <h2 className="font-bold text-on-surface flex items-center gap-2">
+                            <span className="material-symbols-outlined text-pink-500">forum</span>
+                            AI Assistant
+                        </h2>
+                        <div className="flex gap-2 items-center">
+                            {chatMessages.length > 0 && (
+                                <button
+                                    onClick={handleClearChat}
+                                    className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
+                                    title="Clear chat history"
+                                >
+                                    <Eraser className="h-3 w-3" />
+                                    Clear
+                                </button>
+                            )}
+                            <div className="w-2 h-2 rounded-full bg-secondary animate-pulse"></div>
+                            <span className="text-[10px] text-slate-400">Online</span>
+                        </div>
                     </div>
 
-                    {chatMessages.length > 0 && (
-                        <div className="px-4 max-h-48 overflow-y-auto space-y-2 mb-2">
-                            {chatMessages.map(msg => (
-                                <div key={msg._id} className={`text-xs ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-                                    <span className={`inline-block max-w-[85%] rounded-lg px-3 py-1.5 ${
-                                        msg.role === 'user'
-                                            ? 'bg-[hsl(var(--primary))] text-white'
-                                            : 'bg-[hsl(var(--secondary))] text-[hsl(var(--foreground))]'
-                                    }`}>
-                                        {msg.content.length > 200 ? msg.content.slice(0, 200) + '...' : msg.content}
-                                    </span>
-                                    {msg.sources && msg.sources.length > 0 && (
-                                        <div className="flex flex-wrap gap-1 mt-1 justify-start">
-                                            {msg.sources.map((src, idx) => (
-                                                <button key={idx} onClick={() => seekTo(src.startTimestamp)} className="text-[10px] px-1.5 py-0.5 rounded bg-[hsl(var(--accent))]/15 text-[hsl(var(--accent))] font-mono">
-                                                    {formatTime(src.startTimestamp)}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                        {chatMessages.length === 0 && (
+                            <div className="flex h-full items-center justify-center opacity-50 flex-col gap-2">
+                                <MessageSquare className="h-8 w-8 text-pink-400" />
+                                <p className="text-sm text-center px-4">Ask the AI questions about this session's transcript</p>
+                            </div>
+                        )}
+                        {chatMessages.map(msg => (
+                            <div key={msg._id} className={`flex flex-col gap-1 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                                <div className={`py-2 px-4 rounded-2xl text-sm max-w-[85%] border ${
+                                    msg.role === 'user'
+                                        ? 'bg-slate-800/80 text-on-surface rounded-tr-none border-slate-700/50'
+                                        : 'bg-pink-500/10 text-pink-100 rounded-tl-none border-pink-500/20 backdrop-blur-sm'
+                                }`}>
+                                    <div className="prose prose-invert prose-sm max-w-none">
+                                        <ReactMarkdown>
+                                            {msg.content}
+                                        </ReactMarkdown>
+                                    </div>
                                 </div>
-                            ))}
-                            <div ref={chatBottomRef} />
-                        </div>
-                    )}
+                                {msg.sources && msg.sources.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1 justify-start">
+                                        {msg.sources.map((src, idx) => (
+                                            <button key={idx} onClick={() => seekTo(src.startTimestamp)} className="text-[10px] px-1.5 py-0.5 rounded bg-pink-500/20 text-pink-300 font-mono hover:bg-pink-500/40 transition">
+                                                {formatTime(src.startTimestamp)}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        <div ref={chatBottomRef} />
+                    </div>
 
-                    <form onSubmit={sendChatMessage} className="px-4 pb-3 flex gap-2">
-                        <input
-                            type="text"
-                            value={chatInput}
-                            onChange={(e) => setChatInput(e.target.value)}
-                            placeholder="Ask about the video..."
-                            disabled={!isReady}
-                            className="flex-1 rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--secondary))] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--ring))] transition-all disabled:opacity-50"
-                        />
-                        <button
-                            type="submit"
-                            disabled={chatSending || !chatInput.trim() || !isReady}
-                            className="btn-primary rounded-lg p-2 disabled:opacity-40"
-                        >
-                            {chatSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                        </button>
+                    <form onSubmit={sendChatMessage} className="p-4 bg-slate-950/40">
+                        <div className="relative flex items-center">
+                            <input
+                                type="text"
+                                value={chatInput}
+                                onChange={(e) => setChatInput(e.target.value)}
+                                placeholder="Ask anything about the video..."
+                                disabled={!isReady}
+                                className="w-full bg-surface-container-highest/50 border-none rounded-full py-3 pl-5 pr-12 text-sm text-on-surface focus:ring-2 focus:ring-pink-500/50 placeholder-slate-500 transition-all duration-300 disabled:opacity-50"
+                            />
+                            <button
+                                type="submit"
+                                disabled={chatSending || !chatInput.trim() || !isReady}
+                                className="absolute right-2 p-2 bg-pink-500 text-white rounded-full hover:bg-pink-400 active:scale-90 transition-all shadow-lg shadow-pink-500/20 disabled:opacity-50 disabled:grayscale"
+                            >
+                                {chatSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <span className="material-symbols-outlined text-sm" style={{fontVariationSettings: "'FILL' 1"}}>send</span>}
+                            </button>
+                        </div>
                     </form>
                 </div>
-
-                {/* Actions */}
-                <div className="flex-1 overflow-y-auto">
-                    <div className="px-4 py-3">
-                        <div className="flex items-center gap-2 mb-3">
-                            <Sparkles className="h-4 w-4 text-[hsl(var(--primary))]" />
-                            <span className="text-sm font-semibold">Actions</span>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2">
-                            {ACTION_BUTTONS.map(({ type, label, icon: Icon, span }) => (
-                                <button
-                                    key={type}
-                                    onClick={() => generateNote(type)}
-                                    disabled={generating !== null || !isReady || !hasTranscript}
-                                    className={`${
-                                        span === 'full' ? 'col-span-2' : 'col-span-1'
-                                    } rounded-xl border border-[hsl(var(--border))] px-4 py-3 text-sm font-medium text-left
-                                    hover:border-[hsl(var(--primary))]/40 hover:bg-[hsl(var(--primary))]/5
-                                    disabled:opacity-40 disabled:hover:border-[hsl(var(--border))] disabled:hover:bg-transparent
-                                    transition-all duration-200 flex items-center gap-2.5`}
-                                >
-                                    {generating === type ? (
-                                        <Loader2 className="h-4 w-4 animate-spin text-[hsl(var(--primary))]" />
-                                    ) : (
-                                        <Icon className="h-4 w-4 text-[hsl(var(--primary))]" />
-                                    )}
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-
-                        {generating && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 4 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="mt-3 flex items-center gap-2 text-xs text-[hsl(var(--primary))] bg-[hsl(var(--primary))]/5 rounded-lg px-3 py-2"
-                            >
-                                <Sparkles className="h-3 w-3 animate-pulse" />
-                                AI is generating your {generating.replace('_', ' ')}...
-                            </motion.div>
-                        )}
-
-                        {!isReady && !isFailed && (
-                            <div className="mt-3 flex items-center gap-2 text-xs text-amber-400 bg-amber-500/10 rounded-lg px-3 py-2">
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                                Waiting for transcription to complete...
-                            </div>
-                        )}
-
-                        {isFailed && (
-                            <div className="mt-3 flex items-center gap-2 text-xs text-red-400 bg-red-500/10 rounded-lg px-3 py-2">
-                                <AlertCircle className="h-3 w-3" />
-                                Transcription failed. Actions are unavailable.
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-        </div>
+            </section>
+        </main>
     );
+
 }
 
 // ─── Full-Screen Note Viewer ─────────────────────────────────────
 
 function NoteViewerFull({
-    note, onBack, onExport, onSeek, onDelete,
+    note, onBack, onExport, onSeek, onDelete, onUpdate,
 }: {
     note: Note;
     onBack: () => void;
     onExport: (noteId: string, format: string) => void;
     onSeek: (seconds: number) => void;
     onDelete: (noteId: string) => void;
+    onUpdate: (noteId: string, content: string) => Promise<void>;
 }) {
     const containerRef = useRef<HTMLDivElement>(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editContent, setEditContent] = useState(note.content);
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        setEditContent(note.content);
+        setIsEditing(false);
+    }, [note.content]);
+
+    const handleSave = async () => {
+        if (!editContent.trim()) return;
+        setIsSaving(true);
+        try {
+            await onUpdate(note._id, editContent);
+            setIsEditing(false);
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     const renderMermaid = useCallback(async () => {
         if (!containerRef.current) return;
@@ -1227,70 +1253,113 @@ function NoteViewerFull({
                     </div>
                 </div>
                 <div className="flex items-center gap-1">
-                    {['md', 'html'].map(fmt => (
-                        <button
-                            key={fmt}
-                            onClick={() => onExport(note._id, fmt)}
-                            className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))] transition"
-                        >
-                            <Download className="h-3 w-3" />.{fmt}
-                        </button>
-                    ))}
-                    <button
-                        onClick={() => { onDelete(note._id); onBack(); }}
-                        className="p-1.5 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive))]/10 transition"
-                    >
-                        <Trash2 className="h-4 w-4" />
-                    </button>
+                    {isEditing ? (
+                        <>
+                            <button
+                                onClick={() => {
+                                    setIsEditing(false);
+                                    setEditContent(note.content);
+                                }}
+                                disabled={isSaving}
+                                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))] transition disabled:opacity-50"
+                            >
+                                <X className="h-4 w-4" /> Cancel
+                            </button>
+                            <button
+                                onClick={handleSave}
+                                disabled={isSaving}
+                                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-[hsl(var(--primary-foreground))] bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))/90] transition disabled:opacity-50 font-medium"
+                            >
+                                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} 
+                                Save
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <button
+                                onClick={() => setIsEditing(true)}
+                                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))]/10 transition"
+                            >
+                                <Edit2 className="h-4 w-4" /> Edit
+                            </button>
+                            {['md', 'html'].map(fmt => (
+                                <button
+                                    key={fmt}
+                                    onClick={() => onExport(note._id, fmt)}
+                                    className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))] transition"
+                                >
+                                    <Download className="h-3 w-3" />.{fmt}
+                                </button>
+                            ))}
+                            <button
+                                onClick={() => { onDelete(note._id); onBack(); }}
+                                className="p-1.5 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive))]/10 transition"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto px-8 py-6 max-w-4xl mx-auto w-full">
-                {note.mermaidCode && (
-                    <div className="mb-6 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] p-4 overflow-x-auto">
-                        <div className="mermaid-block" data-mermaid={note.mermaidCode} />
-                    </div>
-                )}
+            <div className={`flex-1 overflow-y-auto px-8 py-6 max-w-4xl mx-auto w-full ${isEditing ? 'flex flex-col' : ''}`}>
+                {isEditing ? (
+                    <textarea
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        disabled={isSaving}
+                        className="flex-1 w-full bg-[hsl(var(--background))]/50 border border-[hsl(var(--border))] rounded-xl p-4 text-[hsl(var(--foreground))] font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] transition-all min-h-[500px] disabled:opacity-50"
+                        placeholder="Write your notes here in Markdown..."
+                    />
+                ) : (
+                    <>
+                        {note.mermaidCode && (
+                            <div className="mb-6 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] p-4 overflow-x-auto">
+                                <div className="mermaid-block" data-mermaid={note.mermaidCode} />
+                            </div>
+                        )}
 
-                <div className="prose prose-sm prose-invert max-w-none">
-                    <ReactMarkdown
-                        components={{
-                            a: ({ href, children }) => {
-                                if (href?.startsWith('timestamp:')) {
-                                    const secs = parseInt(href.replace('timestamp:', ''));
-                                    return (
-                                        <button
-                                            onClick={() => onSeek(secs)}
-                                            className="text-[hsl(var(--accent))] hover:underline font-mono text-xs bg-[hsl(var(--accent))]/10 px-1.5 py-0.5 rounded"
-                                        >
-                                            {children}
-                                        </button>
-                                    );
-                                }
-                                return (
-                                    <a href={href} target="_blank" rel="noopener" className="text-[hsl(var(--primary))] hover:text-[hsl(var(--accent))]">
-                                        {children}
-                                    </a>
-                                );
-                            },
-                            code: ({ className, children, ...props }) => {
-                                const match = /language-mermaid/.exec(className || '');
-                                if (match) {
-                                    const code = String(children).replace(/\n$/, '');
-                                    return (
-                                        <div className="not-prose my-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] p-4 overflow-x-auto">
-                                            <div className="mermaid-block" data-mermaid={code} />
-                                        </div>
-                                    );
-                                }
-                                return <code className={className} {...props}>{children}</code>;
-                            },
-                        }}
-                    >
-                        {processContent(note.content)}
-                    </ReactMarkdown>
-                </div>
+                        <div className="prose prose-sm prose-invert max-w-none">
+                            <ReactMarkdown
+                                components={{
+                                    a: ({ href, children }) => {
+                                        if (href?.startsWith('timestamp:')) {
+                                            const secs = parseInt(href.replace('timestamp:', ''));
+                                            return (
+                                                <button
+                                                    onClick={() => onSeek(secs)}
+                                                    className="text-[hsl(var(--accent))] hover:underline font-mono text-xs bg-[hsl(var(--accent))]/10 px-1.5 py-0.5 rounded"
+                                                >
+                                                    {children}
+                                                </button>
+                                            );
+                                        }
+                                        return (
+                                            <a href={href} target="_blank" rel="noopener" className="text-[hsl(var(--primary))] hover:text-[hsl(var(--accent))]">
+                                                {children}
+                                            </a>
+                                        );
+                                    },
+                                    code: ({ className, children, ...props }) => {
+                                        const match = /language-mermaid/.exec(className || '');
+                                        if (match) {
+                                            const code = String(children).replace(/\n$/, '');
+                                            return (
+                                                <div className="not-prose my-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] p-4 overflow-x-auto">
+                                                    <div className="mermaid-block" data-mermaid={code} />
+                                                </div>
+                                            );
+                                        }
+                                        return <code className={className} {...props}>{children}</code>;
+                                    },
+                                }}
+                            >
+                                {processContent(note.content)}
+                            </ReactMarkdown>
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );

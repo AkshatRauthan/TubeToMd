@@ -76,7 +76,7 @@ class MergeChunksResponse(BaseModel):
 class HealthResponse(BaseModel):
     """Health check response"""
     status: str
-    whisper_model: str
+    transcription_engine: str
     version: str = "1.0.0"
 
 
