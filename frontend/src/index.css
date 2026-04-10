@@ -1,51 +1,80 @@
 @import "tailwindcss";
 
-/* ── TubeToMD — Dark Slate + Pink Accent Theme ──────────────
-   Inspired by youtube-transcript.io
-   Dark navy background, pink/rose CTAs, teal accents, clean cards
+/* ── TubeToMD — Nocturne Rose Design System ──────────────
+   Intelligent Lume aesthetic (Glassmorphism + Gradients)
    ──────────────────────────────────────────────────────────── */
 
-@layer base {
-  :root {
-    --background: 222 30% 11%;
-    --foreground: 210 20% 95%;
-    --card: 222 25% 14%;
-    --card-foreground: 210 20% 95%;
-    --popover: 222 25% 14%;
-    --popover-foreground: 210 20% 95%;
-    --primary: 330 80% 60%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 222 20% 18%;
-    --secondary-foreground: 210 15% 80%;
-    --muted: 222 20% 18%;
-    --muted-foreground: 220 10% 55%;
-    --accent: 160 84% 39%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 222 18% 20%;
-    --input: 222 18% 20%;
-    --ring: 330 80% 60%;
-    --radius: 0.75rem;
-  }
+@theme {
+  --color-on-secondary-fixed: #002113;
+  --color-on-tertiary: #00390b;
+  --color-on-primary-fixed: #3f001c;
+  --color-surface-bright: #343949;
+  --color-on-background: #dee1f7;
+  --color-secondary-fixed: #6ffbbe;
+  --color-surface-container-highest: #2f3445;
+  --color-on-error: #690005;
+  --color-tertiary-fixed: #8afb89;
+  --color-on-tertiary-container: #fafff4;
+  --color-inverse-surface: #dee1f7;
+  --color-surface-container: #1a1f2f;
+  --color-primary: #ffb1c7;
+  --color-surface-tint: #ffb1c7;
+  --color-tertiary-container: #008826;
+  --color-inverse-on-surface: #2b3040;
+  --color-surface-variant: #2f3445;
+  --color-secondary: #4edea3;
+  --color-primary-fixed: #ffd9e2;
+  --color-tertiary-fixed-dim: #6ede70;
+  --color-primary-container: #db2777;
+  --color-on-primary-fixed-variant: #8e0048;
+  --color-on-surface-variant: #e1bec6;
+  --color-surface-container-low: #161b2b;
+  --color-surface-container-lowest: #090e1c;
+  --color-surface-container-high: #25293a;
+  --color-on-surface: #dee1f7;
+  --color-tertiary: #6ede70;
+  --color-on-tertiary-fixed: #002204;
+  --color-on-secondary-container: #00311f;
+  --color-on-error-container: #ffdad6;
+  --color-background: #0e1322;
+  --color-on-primary-container: #fffdff;
+  --color-on-secondary: #003824;
+  --color-error-container: #93000a;
+  --color-on-primary: #650031;
+  --color-secondary-fixed-dim: #4edea3;
+  --color-outline: #a88990;
+  --color-on-tertiary-fixed-variant: #005314;
+  --color-outline-variant: #594047;
+  --color-on-secondary-fixed-variant: #005236;
+  --color-primary-fixed-dim: #ffb1c7;
+  --color-secondary-container: #00a572;
+  --color-error: #ffb4ab;
+  --color-surface: #0e1322;
+  --color-inverse-primary: #ba0060;
+  --color-surface-dim: #0e1322;
+
+  --font-headline: "Inter", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-label: "Inter", sans-serif;
 }
 
 @layer base {
   html {
     color-scheme: dark;
   }
-  * {
-    @apply border-[hsl(var(--border))];
-  }
+  
   body {
-    @apply bg-[hsl(var(--background))] text-[hsl(var(--foreground))];
+    background-color: var(--color-surface);
+    color: var(--color-on-surface);
+    font-family: 'Inter', sans-serif;
     margin: 0;
     overflow-x: hidden;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
+  
   ::selection {
-    background: hsl(330 80% 60% / 0.3);
-    color: hsl(0 0% 100%);
+    background-color: var(--color-primary-container);
+    color: white;
   }
 }
 
@@ -59,11 +88,11 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted-foreground) / 0.25);
+    background: var(--color-outline-variant);
     border-radius: 999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground) / 0.4);
+    background: var(--color-outline);
   }
 }
 
@@ -88,18 +117,22 @@
   to { opacity: 1; transform: scale(1); }
 }
 
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-@keyframes pulse-soft {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-}
-
 /* ── Utility Classes ───────────────────────────────────────── */
 @layer utilities {
+  .material-symbols-outlined { 
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; 
+  }
+  
+  .glass-card {
+      background: rgba(26, 31, 47, 0.4);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(89, 64, 71, 0.15);
+  }
+  
+  .hero-glow {
+      background: radial-gradient(circle at center, rgba(219, 39, 119, 0.15) 0%, transparent 70%);
+  }
+
   .animate-fade-in {
     animation: fade-in 0.5s ease-out both;
   }
@@ -112,88 +145,26 @@
   .animate-scale-in {
     animation: scale-in 0.3s ease-out both;
   }
-  .animate-shimmer {
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      hsl(330 80% 60% / 0.06) 50%,
-      transparent 100%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 2s ease-in-out infinite;
-  }
-  .animate-pulse-soft {
-    animation: pulse-soft 2s ease-in-out infinite;
-  }
-
-  /* Staggered children */
-  .stagger-children > * {
-    animation: fade-in-up 0.5s ease-out both;
-  }
-  .stagger-children > *:nth-child(1) { animation-delay: 0ms; }
-  .stagger-children > *:nth-child(2) { animation-delay: 80ms; }
-  .stagger-children > *:nth-child(3) { animation-delay: 160ms; }
-  .stagger-children > *:nth-child(4) { animation-delay: 240ms; }
-  .stagger-children > *:nth-child(5) { animation-delay: 320ms; }
-  .stagger-children > *:nth-child(6) { animation-delay: 400ms; }
-
-  /* Primary pink button */
-  .btn-primary {
-    background: hsl(var(--primary));
-    color: white;
-    transition: all 0.2s ease;
-  }
-  .btn-primary:hover {
-    background: hsl(330 80% 55%);
-    box-shadow: 0 4px 20px hsl(330 80% 60% / 0.3);
-    transform: translateY(-1px);
-  }
-  .btn-primary:active {
-    transform: translateY(0);
-  }
-
-  /* Cards */
-  .card {
-    background: hsl(var(--card));
-    border: 1px solid hsl(var(--border));
-    border-radius: var(--radius);
-  }
-  .card-hover {
-    transition: all 0.2s ease;
-  }
-  .card-hover:hover {
-    border-color: hsl(var(--primary) / 0.3);
-    box-shadow: 0 4px 24px hsl(var(--primary) / 0.08);
-    transform: translateY(-2px);
-  }
-
-  /* Text gradient */
-  .text-gradient {
-    background: linear-gradient(135deg, hsl(var(--primary)), hsl(330 90% 72%));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
 }
 
 /* ── Prose / Markdown ──────────────────────────────────────── */
 .prose a {
-  color: hsl(var(--primary));
+  color: var(--color-primary);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 .prose a:hover {
-  color: hsl(var(--accent));
+  color: var(--color-secondary);
 }
 .prose code {
-  background: hsl(var(--muted));
+  background: var(--color-surface-container-high);
   padding: 0.15em 0.4em;
   border-radius: 4px;
   font-size: 0.875em;
 }
 .prose pre {
-  background: hsl(var(--muted));
-  border-radius: var(--radius);
+  background: var(--color-surface-container-high);
+  border-radius: 0.75rem;
   padding: 1rem;
 }
 
@@ -205,7 +176,7 @@
 /* ── Focus ring ────────────────────────────────────────────── */
 @layer base {
   *:focus-visible {
-    outline: 2px solid hsl(var(--ring));
+    outline: 2px solid var(--color-primary-container);
     outline-offset: 2px;
     border-radius: 4px;
   }

@@ -6,7 +6,6 @@ import api from '@/lib/api';
 import type { ApiResponse, Session } from '@/types';
 import { useVideoProcessor } from '@/hooks/useVideoProcessor';
 import {
-    Youtube,
     Upload,
     Loader2,
     Trash2,
@@ -19,6 +18,8 @@ import {
     Video,
     Sparkles,
     Download,
+    Link as LinkIcon,
+    ChevronRight
 } from 'lucide-react';
 
 const POLL_INTERVAL = 4000;
@@ -29,16 +30,15 @@ export function DashboardPage() {
     const [youtubeUrl, setYoutubeUrl] = useState('');
     const [creating, setCreating] = useState(false);
     const [error, setError] = useState('');
+    const [inputType, setInputType] = useState<'youtube' | 'upload'>('youtube');
     const navigate = useNavigate();
 
     const { state: uploadState, processVideo, reset: resetUpload, abort: abortUpload } =
         useVideoProcessor();
 
     const fetchSessions = useCallback(async () => {
-        console.log('[Dashboard] Fetching sessions...');
         try {
             const res = await api.get<ApiResponse<Session[]>>('/sessions');
-            console.log(`[Dashboard] Fetched ${res.data.data.length} sessions`, res.data.data.map(s => ({ id: s._id, title: s.title, status: s.status })));
             setSessions(res.data.data);
         } catch (err: any) {
             const msg = err.response?.data?.message || 'Failed to fetch sessions';
@@ -57,40 +57,29 @@ export function DashboardPage() {
             (s) => s.status === 'processing' || s.status === 'transcribing'
         );
         if (!hasProcessing) return;
-        console.log('[Dashboard] Active processing sessions detected, starting poll interval');
         const interval = setInterval(fetchSessions, POLL_INTERVAL);
-        return () => {
-            console.log('[Dashboard] Clearing poll interval');
-            clearInterval(interval);
-        };
+        return () => clearInterval(interval);
     }, [sessions, fetchSessions]);
 
     useEffect(() => {
         if (uploadState.stage === 'done' && uploadState.sessionId) {
-            console.log('[Dashboard] Upload complete, sessionId:', uploadState.sessionId);
             toast.success('Upload complete! Session is being processed.');
             fetchSessions();
-        }
-        if (uploadState.stage !== 'idle') {
-            console.log(`[Dashboard] Upload state: stage=${uploadState.stage}, progress=${uploadState.progress}%, chunks=${uploadState.chunksUploaded}/${uploadState.totalChunks}`, uploadState.error ? `error=${uploadState.error}` : '');
         }
     }, [uploadState.stage, uploadState.sessionId, uploadState.progress, uploadState.chunksUploaded, fetchSessions]);
 
     const handleYouTubeSubmit = async (e: FormEvent) => {
         e.preventDefault();
         if (!youtubeUrl.trim()) return;
-        console.log('[Dashboard] YouTube submit:', youtubeUrl);
         setCreating(true);
         setError('');
 
         try {
-            // Check if session already exists for this URL
             const checkRes = await api.get<ApiResponse<Session | null>>('/sessions/find-by-url', {
                 params: { videoUrl: youtubeUrl }
             });
             
             if (checkRes.data.data) {
-                // Session exists, navigate to it
                 toast.info('Video already processed! Opening existing session.');
                 navigate(`/session/${checkRes.data.data._id}`);
                 setYoutubeUrl('');
@@ -100,13 +89,11 @@ export function DashboardPage() {
             const res = await api.post<ApiResponse<Session>>('/sessions/youtube', {
                 videoUrl: youtubeUrl,
             });
-            console.log('[Dashboard] YouTube session created:', { id: res.data.data._id, title: res.data.data.title, status: res.data.data.status });
             setSessions((prev) => [res.data.data, ...prev]);
             setYoutubeUrl('');
             toast.success('YouTube session created!');
         } catch (err: any) {
             const msg = err.response?.data?.message || 'Failed to create session';
-            console.error(`[Dashboard] YouTube session creation failed: ${msg}`);
             setError(msg);
             toast.error(msg);
         } finally {
@@ -117,33 +104,30 @@ export function DashboardPage() {
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        console.log('[Dashboard] File selected:', { name: file.name, size: `${(file.size / 1024 / 1024).toFixed(2)} MB`, type: file.type });
         e.target.value = '';
         setError('');
         toast.info(`Processing ${file.name}...`);
         const sessionId = await processVideo(file, file.name);
-        console.log('[Dashboard] File upload result, sessionId:', sessionId);
         if (sessionId) {
             await fetchSessions();
         }
     };
 
-    const handleDelete = async (sessionId: string) => {
+    const handleDelete = async (sessionId: string, e: React.MouseEvent) => {
+        e.stopPropagation();
         if (!confirm('Delete this session and all its notes?')) return;
-        console.log('[Dashboard] Deleting session:', sessionId);
         try {
             await api.delete(`/sessions/${sessionId}`);
-            console.log('[Dashboard] Session deleted:', sessionId);
             setSessions((prev) => prev.filter((s) => s._id !== sessionId));
             toast.success('Session deleted');
         } catch (err: any) {
             const msg = err.response?.data?.message || 'Failed to delete session';
-            console.error(`[Dashboard] Failed to delete session: ${msg}`);
             toast.error(msg);
         }
     };
 
-    const handleDownloadReport = async (sessionId: string, sessionTitle: string) => {
+    const handleDownloadReport = async (sessionId: string, sessionTitle: string, e: React.MouseEvent) => {
+        e.stopPropagation();
         toast.info('Generating report... This may take a moment.');
         try {
             const res = await api.get(`/sessions/${sessionId}/report`, {
@@ -158,7 +142,6 @@ export function DashboardPage() {
             toast.success('Report downloaded!');
         } catch (err: any) {
             const msg = err.response?.data?.message || 'Failed to generate report';
-            console.error(`[Dashboard] Download report failed: ${msg}`);
             toast.error(msg);
         }
     };
@@ -183,30 +166,30 @@ export function DashboardPage() {
             case 'processing':
             case 'transcribing':
                 return {
-                    icon: <Loader2 className="h-4 w-4 animate-spin" />,
+                    icon: <Loader2 className="h-3 w-3 animate-spin" />,
                     color: 'text-amber-400',
-                    bg: 'bg-amber-500/10',
+                    bg: 'bg-amber-500/20',
                     label: status === 'processing' ? 'Processing' : 'Transcribing',
                 };
             case 'ready':
                 return {
-                    icon: <CheckCircle className="h-4 w-4" />,
-                    color: 'text-emerald-400',
-                    bg: 'bg-emerald-500/10',
+                    icon: <CheckCircle className="h-3 w-3" />,
+                    color: 'text-secondary',
+                    bg: 'bg-secondary-container/20',
                     label: 'Ready',
                 };
             case 'failed':
                 return {
-                    icon: <AlertCircle className="h-4 w-4" />,
-                    color: 'text-red-400',
-                    bg: 'bg-red-500/10',
+                    icon: <AlertCircle className="h-3 w-3" />,
+                    color: 'text-error',
+                    bg: 'bg-error-container/20',
                     label: 'Failed',
                 };
             default:
                 return {
-                    icon: <Clock className="h-4 w-4" />,
-                    color: 'text-[hsl(var(--muted-foreground))]',
-                    bg: 'bg-[hsl(var(--muted))]/50',
+                    icon: <Clock className="h-3 w-3" />,
+                    color: 'text-on-surface-variant',
+                    bg: 'bg-surface-container-highest/50',
                     label: status,
                 };
         }
@@ -221,211 +204,257 @@ export function DashboardPage() {
     const currentStageIdx = progressStages.indexOf(uploadState.stage);
 
     return (
-        <div className="mx-auto max-w-6xl px-6 py-8">
-            {/* Header */}
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-                <h1 className="text-3xl font-bold">
-                    <span className="text-gradient">Dashboard</span>
-                </h1>
-                <p className="mt-1 text-[hsl(var(--muted-foreground))]">
-                    Paste a YouTube link or upload a video to get started
-                </p>
-            </motion.div>
+        <main className="pt-32 pb-20 px-6 md:px-8 max-w-7xl mx-auto min-h-[calc(100vh-80px)]">
+            {/* Header Section */}
+            <header className="mb-12 relative">
+                <motion.h1 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-4xl md:text-5xl font-black tracking-tight text-on-surface mb-2 font-headline"
+                >
+                    Welcome back, Explorer
+                </motion.h1>
+                <motion.p 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="text-lg text-on-surface-variant/80 font-body"
+                >
+                    Ready to distill some knowledge today?
+                </motion.p>
+            </header>
 
-            {/* Input Section */}
-            <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="mt-8 grid gap-6 md:grid-cols-2"
-            >
-                {/* YouTube URL */}
-                <div className="card p-6 card-hover">
-                    <div className="flex items-center gap-2.5 mb-4">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-500/10">
-                            <Youtube className="h-5 w-5 text-red-400" />
-                        </div>
-                        <h3 className="font-semibold">YouTube URL</h3>
-                    </div>
-                    <form onSubmit={handleYouTubeSubmit} className="flex gap-2">
-                        <input
-                            type="url"
-                            value={youtubeUrl}
-                            onChange={(e) => setYoutubeUrl(e.target.value)}
-                            placeholder="https://youtube.com/watch?v=..."
-                            className="flex-1 rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--secondary))] px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--ring))] transition-all"
-                        />
-                        <button
-                            type="submit"
-                            disabled={creating || !youtubeUrl.trim()}
-                            className="btn-primary rounded-xl px-5 py-2.5 text-sm font-medium disabled:opacity-50"
-                        >
-                            {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Go'}
-                        </button>
-                    </form>
-                </div>
-
-                {/* File Upload */}
-                <div className="card p-6 card-hover">
-                    <div className="flex items-center gap-2.5 mb-4">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[hsl(var(--primary))]/10">
-                            <Upload className="h-5 w-5 text-[hsl(var(--primary))]" />
-                        </div>
-                        <h3 className="font-semibold">Upload Video</h3>
-                    </div>
-
-                    <AnimatePresence mode="wait">
-                        {isUploading ? (
-                            <motion.div
-                                key="progress"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                className="space-y-3"
-                            >
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="font-medium flex items-center gap-2">
-                                        <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--primary))] animate-pulse-soft" />
-                                        {uploadState.message}
-                                    </span>
-                                    <button
-                                        onClick={abortUpload}
-                                        className="p-1 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive))]/10 transition"
-                                        title="Cancel"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </button>
-                                </div>
-                                <div className="relative h-2.5 w-full rounded-full bg-[hsl(var(--secondary))] overflow-hidden">
-                                    <motion.div
-                                        className="absolute inset-y-0 left-0 rounded-full bg-[hsl(var(--primary))]"
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${uploadState.progress}%` }}
-                                        transition={{ duration: 0.3 }}
-                                    />
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <div className="flex gap-1">
-                                        {progressStages.map((stage, i) => (
-                                            <div
-                                                key={stage}
-                                                className={`h-1.5 w-6 rounded-full transition-all duration-300 ${
-                                                    i <= currentStageIdx
-                                                        ? 'bg-[hsl(var(--primary))]'
-                                                        : 'bg-[hsl(var(--secondary))]'
-                                                }`}
-                                            />
-                                        ))}
-                                    </div>
-                                    <div className="flex gap-3 text-xs text-[hsl(var(--muted-foreground))]">
-                                        {uploadState.totalChunks > 0 && (
-                                            <span>{uploadState.chunksUploaded}/{uploadState.totalChunks} chunks</span>
-                                        )}
-                                        <span className="font-medium text-[hsl(var(--primary))]">
-                                            {uploadState.progress}%
-                                        </span>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        ) : (
-                            <motion.div key="picker" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                                <label className="group flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-[hsl(var(--border))] p-6 hover:border-[hsl(var(--primary))]/50 hover:bg-[hsl(var(--primary))]/5 transition-all duration-300">
-                                    <input
-                                        type="file"
-                                        accept="video/*,audio/*"
-                                        onChange={handleFileUpload}
-                                        className="hidden"
-                                        disabled={isUploading}
-                                    />
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[hsl(var(--secondary))] group-hover:bg-[hsl(var(--primary))]/10 transition mb-2">
-                                        <Video className="h-5 w-5 text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--primary))] transition" />
-                                    </div>
-                                    <span className="text-sm text-[hsl(var(--muted-foreground))] text-center">
-                                        Click to upload MP4, WebM, MKV, MP3, etc.
-                                    </span>
-                                    <span className="text-xs text-[hsl(var(--muted-foreground))]/60 mt-1">
-                                        Max 512 MB &middot; Audio extracted in-browser
-                                    </span>
-                                </label>
-                                {uploadState.stage === 'done' && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 4 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        className="mt-3 flex items-center gap-2 text-xs text-emerald-500 bg-emerald-500/10 rounded-lg px-3 py-2"
-                                    >
-                                        <CheckCircle className="h-3.5 w-3.5" />
-                                        Upload complete!
-                                        {uploadState.sessionId && (
-                                            <button
-                                                onClick={() => navigate(`/session/${uploadState.sessionId}`)}
-                                                className="underline hover:text-emerald-400 ml-auto"
-                                            >
-                                                Open session
-                                            </button>
-                                        )}
-                                    </motion.div>
-                                )}
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
-            </motion.div>
-
-            {/* Error */}
-            <AnimatePresence>
-                {(error || uploadState.error) && (
-                    <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="mt-4 flex items-center justify-between rounded-xl bg-[hsl(var(--destructive))]/10 border border-[hsl(var(--destructive))]/20 p-3 text-sm text-[hsl(var(--destructive))]"
-                    >
-                        <span>{error || uploadState.error}</span>
-                        <button
-                            onClick={() => { setError(''); resetUpload(); }}
-                            className="text-xs underline hover:opacity-80"
-                        >
-                            Dismiss
-                        </button>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* Sessions List */}
-            <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
+            {/* Main Action Area (Hero Card) */}
+            <motion.section 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.2 }}
-                className="mt-10"
+                className="relative mb-20"
             >
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-semibold">Your Sessions</h2>
+                <div className="absolute w-[400px] h-[400px] bg-[radial-gradient(circle,rgba(219,39,119,0.15)_0%,rgba(219,39,119,0)_70%)] blur-[40px] -z-10 -top-20 -left-20"></div>
+                <div className="absolute w-[400px] h-[400px] bg-[radial-gradient(circle,rgba(219,39,119,0.15)_0%,rgba(219,39,119,0)_70%)] blur-[40px] -z-10 -bottom-20 -right-20"></div>
+                
+                <div className="bg-[#1a1f2f]/60 backdrop-blur-[20px] border border-outline-variant/15 rounded-2xl p-8 md:p-12 shadow-2xl relative overflow-hidden">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-10">
+                        <div>
+                            <h2 className="text-3xl font-bold text-on-primary-container mb-2 font-headline">Create New Session</h2>
+                            <p className="text-on-surface-variant/80">Convert complex videos into high-fidelity markdown notes instantly.</p>
+                        </div>
+                        <div className="flex bg-surface-container-highest/40 p-1 rounded-xl self-start">
+                            <button 
+                                onClick={() => setInputType('youtube')}
+                                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all duration-300 ${inputType === 'youtube' ? 'bg-primary-container text-white shadow-lg' : 'text-on-surface-variant hover:text-primary'}`}
+                            >
+                                YouTube URL
+                            </button>
+                            <button 
+                                onClick={() => setInputType('upload')}
+                                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all duration-300 ${inputType === 'upload' ? 'bg-primary-container text-white shadow-lg' : 'text-on-surface-variant hover:text-primary'}`}
+                            >
+                                Upload File
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="space-y-6">
+                        <AnimatePresence mode="wait">
+                            {inputType === 'youtube' ? (
+                                <motion.form 
+                                    key="youtube-form"
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 20 }}
+                                    onSubmit={handleYouTubeSubmit} 
+                                    className="space-y-6"
+                                >
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-on-surface-variant/50">
+                                            <LinkIcon className="h-6 w-6" />
+                                        </div>
+                                        <input 
+                                            value={youtubeUrl}
+                                            onChange={(e) => setYoutubeUrl(e.target.value)}
+                                            className="w-full bg-surface-container-highest border-none focus:ring-2 focus:ring-primary/50 rounded-xl py-5 pl-14 pr-6 text-lg placeholder:text-on-surface-variant/30 text-on-surface transition-all duration-300 shadow-inner" 
+                                            placeholder="Paste YouTube URL here" 
+                                            type="url"
+                                            disabled={creating}
+                                        />
+                                    </div>
+                                    <div className="flex justify-end">
+                                        <button 
+                                            type="submit"
+                                            disabled={creating || !youtubeUrl.trim()}
+                                            className="px-10 py-4 rounded-xl bg-gradient-to-br from-primary-container to-primary text-on-primary font-bold text-lg flex items-center gap-3 hover:shadow-[0_0_25px_rgba(219,39,119,0.4)] transition-all duration-500 group disabled:opacity-50 disabled:hover:shadow-none"
+                                        >
+                                            {creating ? 'Processing...' : 'Process Video'}
+                                            {creating ? (
+                                                <Loader2 className="h-6 w-6 animate-spin" />
+                                            ) : (
+                                                <Sparkles className="h-6 w-6 group-hover:translate-x-1 transition-transform" />
+                                            )}
+                                        </button>
+                                    </div>
+                                </motion.form>
+                            ) : (
+                                <motion.div 
+                                    key="upload-form"
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -20 }}
+                                >
+                                    {isUploading ? (
+                                        <div className="space-y-4 bg-surface-container-highest/30 rounded-xl p-8 border border-outline-variant/10">
+                                            <div className="flex items-center justify-between text-lg">
+                                                <span className="font-bold text-primary flex items-center gap-3">
+                                                    <Sparkles className="h-5 w-5 animate-pulse" />
+                                                    {uploadState.message}
+                                                </span>
+                                                <button
+                                                    onClick={abortUpload}
+                                                    className="p-2 rounded-lg text-on-surface-variant/50 hover:text-error hover:bg-error-container/20 transition"
+                                                    title="Cancel"
+                                                >
+                                                    <X className="h-5 w-5" />
+                                                </button>
+                                            </div>
+                                            <div className="relative h-3 w-full rounded-full bg-surface-container overflow-hidden">
+                                                <motion.div
+                                                    className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-primary-container to-primary"
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: `${uploadState.progress}%` }}
+                                                    transition={{ duration: 0.3 }}
+                                                />
+                                            </div>
+                                            <div className="flex justify-between items-center pt-2">
+                                                <div className="flex gap-1.5">
+                                                    {progressStages.map((stage, i) => (
+                                                        <div
+                                                            key={stage}
+                                                            className={`h-1.5 w-6 rounded-full transition-all duration-300 ${
+                                                                i <= currentStageIdx
+                                                                    ? 'bg-primary'
+                                                                    : 'bg-surface-container-highest'
+                                                            }`}
+                                                        />
+                                                    ))}
+                                                </div>
+                                                <div className="flex gap-4 text-sm font-label text-on-surface-variant/70">
+                                                    {uploadState.totalChunks > 0 && (
+                                                        <span>{uploadState.chunksUploaded}/{uploadState.totalChunks} chunks</span>
+                                                    )}
+                                                    <span className="font-bold text-primary">
+                                                        {uploadState.progress}%
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <label className="group flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-outline-variant/30 py-16 px-6 hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 bg-surface-container-highest/20">
+                                            <input
+                                                type="file"
+                                                accept="video/*,audio/*"
+                                                onChange={handleFileUpload}
+                                                className="hidden"
+                                                disabled={isUploading}
+                                            />
+                                            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-surface-container group-hover:bg-primary/10 transition-colors mb-4 shadow-lg">
+                                                <Upload className="h-8 w-8 text-on-surface-variant/50 group-hover:text-primary transition-colors" />
+                                            </div>
+                                            <span className="text-lg font-bold text-on-surface text-center mb-2">
+                                                Click to upload your file
+                                            </span>
+                                            <span className="text-sm font-label text-on-surface-variant/60">
+                                                MP4, WebM, MKV, MP3 &middot; Max 512 MB &middot; Audio extracted locally
+                                            </span>
+                                        </label>
+                                    )}
+                                    {uploadState.stage === 'done' && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 4 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            className="mt-4 flex items-center justify-between font-label text-secondary bg-secondary-container/20 rounded-xl px-4 py-3 border border-secondary/20"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <CheckCircle className="h-5 w-5" />
+                                                <span>Upload complete! Generating notes...</span>
+                                            </div>
+                                            {uploadState.sessionId && (
+                                                <button
+                                                    onClick={() => navigate(`/session/${uploadState.sessionId}`)}
+                                                    className="underline font-bold hover:text-white transition-colors"
+                                                >
+                                                    Open Session
+                                                </button>
+                                            )}
+                                        </motion.div>
+                                    )}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                        
+                        {/* Error Handling */}
+                        <AnimatePresence>
+                            {(error || uploadState.error) && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="overflow-hidden"
+                                >
+                                    <div className="mt-4 flex items-center justify-between rounded-xl bg-error-container/20 border border-error/20 p-4 font-label text-error">
+                                        <div className="flex items-center gap-2">
+                                            <AlertCircle className="h-5 w-5" />
+                                            <span>{error || uploadState.error}</span>
+                                        </div>
+                                        <button
+                                            onClick={() => { setError(''); resetUpload(); }}
+                                            className="p-1 hover:bg-error/20 rounded-md transition-colors"
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+                </div>
+            </motion.section>
+
+            {/* Recent Sessions */}
+            <motion.section
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+            >
+                <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-2xl font-bold text-on-surface font-headline">Recent Sessions</h3>
                     {sessions.some((s) => s.status === 'processing' || s.status === 'transcribing') && (
-                        <span className="flex items-center gap-1.5 text-xs text-amber-400">
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                            Processing...
+                        <span className="flex items-center gap-1.5 text-xs font-bold text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            Processing Active
                         </span>
                     )}
                 </div>
 
                 {loading ? (
-                    <div className="flex justify-center py-16">
-                        <div className="flex flex-col items-center gap-3">
-                            <Loader2 className="h-8 w-8 animate-spin text-[hsl(var(--primary))]" />
-                            <span className="text-sm text-[hsl(var(--muted-foreground))]">Loading sessions...</span>
+                    <div className="flex justify-center py-20">
+                        <div className="flex flex-col items-center gap-4">
+                            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                            <span className="text-on-surface-variant font-label">Loading your intelligence library...</span>
                         </div>
                     </div>
                 ) : sessions.length === 0 ? (
-                    <div className="card p-12 text-center">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[hsl(var(--primary))]/10 mx-auto mb-4">
-                            <Plus className="h-6 w-6 text-[hsl(var(--primary))]" />
+                    <div className="bg-[#1a1f2f]/40 border border-outline-variant/10 rounded-2xl p-16 text-center shadow-lg">
+                        <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 mx-auto mb-6">
+                            <Plus className="h-10 w-10 text-primary" />
                         </div>
-                        <p className="text-[hsl(var(--muted-foreground))]">
-                            No sessions yet. Create one above!
+                        <h4 className="text-xl font-bold text-on-surface mb-2">No sessions yet</h4>
+                        <p className="text-on-surface-variant">
+                            Create your first session above by pasting a YouTube link or uploading a video.
                         </p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger-children">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {sessions.map((session) => {
                             const status = statusConfig(session.status);
                             const videoId = extractYouTubeId(session.videoUrl);
@@ -436,111 +465,91 @@ export function DashboardPage() {
                                 <motion.div
                                     key={session._id}
                                     layout
-                                    className="card overflow-hidden card-hover group"
+                                    className="bg-[#1a1f2f]/60 backdrop-blur-md border border-outline-variant/10 rounded-xl overflow-hidden hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(219,39,119,0.1)] transition-all duration-300 group cursor-pointer flex flex-col"
+                                    onClick={() => {
+                                        if (session.status !== 'failed') navigate(`/session/${session._id}`);
+                                    }}
                                 >
-                                    {/* Thumbnail */}
-                                    <div 
-                                        className="relative aspect-video bg-[hsl(var(--secondary))] cursor-pointer"
-                                        onClick={() => {
-                                            if (session.status !== 'failed') {
-                                                navigate(`/session/${session._id}`);
-                                            }
-                                        }}
-                                    >
+                                    <div className="aspect-video relative overflow-hidden bg-surface-container-high">
                                         {thumbnailUrl ? (
                                             <img 
                                                 src={thumbnailUrl} 
                                                 alt={session.title}
-                                                className="w-full h-full object-cover"
+                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                                             />
                                         ) : (
-                                            <div className="w-full h-full flex items-center justify-center">
-                                                <Video className="h-10 w-10 text-[hsl(var(--muted-foreground))]/30" />
+                                            <div className="w-full h-full flex items-center justify-center bg-surface-container-highest">
+                                                <Video className="h-12 w-12 text-on-surface-variant/20" />
                                             </div>
                                         )}
                                         
-                                        {/* Status indicator */}
-                                        <div className={`absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${status.bg} ${status.color} backdrop-blur-sm`}>
-                                            {status.icon}
-                                            <span>{status.label}</span>
-                                        </div>
+                                        <div className="absolute inset-0 bg-gradient-to-t from-[#0e1322]/80 to-transparent opacity-60"></div>
                                         
-                                        {/* Duration badge */}
                                         {session.duration && (
-                                            <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-0.5 rounded text-xs font-medium">
+                                            <div className="absolute bottom-3 right-3 bg-slate-950/80 backdrop-blur px-2 py-1 rounded text-[10px] font-bold text-white uppercase tracking-widest z-10">
                                                 {Math.floor(session.duration / 60)}:{String(Math.floor(session.duration % 60)).padStart(2, '0')}
                                             </div>
                                         )}
-                                        
-                                        {/* Video type badge */}
-                                        <div className={`absolute top-2 left-2 px-2 py-1 rounded-lg text-xs font-medium backdrop-blur-sm ${
-                                            session.videoType === 'youtube'
-                                                ? 'bg-red-500/80 text-white'
-                                                : 'bg-blue-500/80 text-white'
-                                        }`}>
-                                            {session.videoType === 'youtube' ? (
-                                                <Youtube className="h-3 w-3" />
-                                            ) : (
-                                                <Upload className="h-3 w-3" />
-                                            )}
-                                        </div>
                                     </div>
                                     
-                                    {/* Content */}
-                                    <div className="p-4">
-                                        <h3 
-                                            className="font-semibold text-sm line-clamp-2 cursor-pointer hover:text-[hsl(var(--primary))] transition"
-                                            onClick={() => {
-                                                if (session.status !== 'failed') {
-                                                    navigate(`/session/${session._id}`);
-                                                }
-                                            }}
-                                        >
-                                            {session.title}
-                                        </h3>
-                                        <div className="mt-2 flex items-center gap-3 text-xs text-[hsl(var(--muted-foreground))]">
-                                            <span>{new Date(session.createdAt).toLocaleDateString()}</span>
+                                    <div className="p-6 flex flex-col flex-1">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                                                session.videoType === 'youtube'
+                                                    ? 'bg-secondary-container/20 text-secondary'
+                                                    : 'bg-surface-container-highest/50 text-on-surface-variant'
+                                            }`}>
+                                                {session.videoType === 'youtube' ? 'YouTube' : 'Local'}
+                                            </span>
+                                            <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${status.bg} ${status.color}`}>
+                                                {status.icon} {status.label}
+                                            </span>
                                         </div>
                                         
-                                        {/* Action buttons */}
-                                        <div className="mt-3 flex items-center gap-2">
-                                            <button
-                                                onClick={() => handleDownloadReport(session._id, session.title)}
-                                                disabled={session.status !== 'ready'}
-                                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-[hsl(var(--secondary))] hover:bg-[hsl(var(--primary))]/10 hover:text-[hsl(var(--primary))] transition text-sm font-medium disabled:opacity-40 disabled:hover:bg-[hsl(var(--secondary))] disabled:hover:text-[hsl(var(--foreground))]"
-                                                title="Download complete report"
-                                            >
-                                                <Download className="h-4 w-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    if (session.status !== 'failed') {
-                                                        navigate(`/session/${session._id}`);
-                                                    }
-                                                }}
-                                                disabled={session.status === 'failed'}
-                                                className="flex-1 btn-primary rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-40"
-                                            >
-                                                Go to transcript
-                                            </button>
-                                            {session.videoUrl && (
-                                                <a
-                                                    href={session.videoUrl}
-                                                    target="_blank"
-                                                    rel="noopener"
-                                                    className="p-2 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary))] transition"
-                                                    title="Open video"
+                                        <h4 className="text-lg font-bold text-on-surface mb-2 line-clamp-2 group-hover:text-primary transition-colors pr-2 flex-1">
+                                            {session.title || 'Untitled Session'}
+                                        </h4>
+                                        <p className="text-on-surface-variant/60 text-xs font-label uppercase tracking-wider mb-5">
+                                            {new Date(session.createdAt).toLocaleDateString(undefined, {
+                                                year: 'numeric', month: 'short', day: 'numeric'
+                                            })}
+                                        </p>
+                                        
+                                        <div className="flex items-center justify-between pt-4 border-t border-outline-variant/10">
+                                            <div className="flex items-center gap-1">
+                                                {session.videoUrl && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            window.open(session.videoUrl, '_blank', 'noopener');
+                                                        }}
+                                                        className="p-2 rounded-lg text-on-surface-variant/60 hover:text-white hover:bg-surface-container-highest transition-colors"
+                                                        title="Open Source Video"
+                                                    >
+                                                        <ExternalLink className="h-4 w-4" />
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={(e) => handleDownloadReport(session._id, session.title || 'Session', e)}
+                                                    disabled={session.status !== 'ready'}
+                                                    className="p-2 rounded-lg text-on-surface-variant/60 hover:text-white hover:bg-surface-container-highest transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+                                                    title="Download Report"
                                                 >
-                                                    <ExternalLink className="h-4 w-4" />
-                                                </a>
-                                            )}
-                                            <button
-                                                onClick={() => handleDelete(session._id)}
-                                                className="p-2 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive))]/10 transition"
-                                                title="Delete session"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </button>
+                                                    <Download className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => handleDelete(session._id, e)}
+                                                    className="p-2 rounded-lg text-on-surface-variant/60 hover:text-error hover:bg-error-container/20 transition-colors"
+                                                    title="Delete Session"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                            <div className="flex -space-x-2 mr-2">
+                                                <div className="w-7 h-7 rounded-full border-2 border-surface bg-surface-container-high flex items-center justify-center text-[10px] font-bold text-primary">AI</div>
+                                                <div className="w-7 h-7 rounded-full border-2 border-surface bg-surface-container-high flex items-center justify-center text-[10px] font-bold text-secondary">MD</div>
+                                                <ChevronRight className="h-5 w-5 ml-4 text-on-surface-variant/40 group-hover:text-primary transition-colors transform group-hover:translate-x-1" />
+                                            </div>
                                         </div>
                                     </div>
                                 </motion.div>
@@ -548,7 +557,8 @@ export function DashboardPage() {
                         })}
                     </div>
                 )}
-            </motion.div>
-        </div>
+            </motion.section>
+        </main>
     );
 }
+

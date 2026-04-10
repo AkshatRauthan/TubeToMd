@@ -1,352 +1,185 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Youtube, Brain, MessageSquare, FileDown, Sparkles, Zap, ChevronDown, Check, Github } from 'lucide-react';
-import { motion } from 'framer-motion';
-import logoImg from '@/assets/TubeToMD.png';
-
-const features = [
-    {
-        icon: Youtube,
-        title: 'YouTube & Video Upload',
-        description: 'Paste a YouTube URL or upload any video file. Audio is extracted in-browser — nothing stored on the server.',
-    },
-    {
-        icon: Brain,
-        title: 'AI-Powered Notes',
-        description: 'Generate summaries, detailed notes, mind maps, flowcharts, and flashcards powered by Groq AI.',
-    },
-    {
-        icon: MessageSquare,
-        title: 'Interactive Q&A',
-        description: 'Ask questions about the video and get precise AI answers with clickable timestamp citations.',
-    },
-    {
-        icon: FileDown,
-        title: 'Multi-Format Export',
-        description: 'Export your notes as Markdown, PDF, DOCX, or HTML. Mermaid diagrams render beautifully.',
-    },
-];
-
-const faqs = [
-    {
-        q: 'How does TubeToMD work?',
-        a: 'Simply paste a YouTube URL or upload a video file. Our system transcribes the audio using Groq Whisper, then uses Groq AI to generate structured notes, summaries, mind maps, and more.',
-    },
-    {
-        q: 'Is my video data stored on your servers?',
-        a: 'No. For uploaded videos, audio extraction happens entirely in your browser using FFmpeg.wasm. Only the audio chunks are sent for transcription — the original video file never leaves your device.',
-    },
-    {
-        q: 'What note types can I generate?',
-        a: 'You can generate summaries, detailed notes, mind maps (Mermaid), flowcharts, flashcards, resource lists, and more. Each type can be personalized with different writing personas.',
-    },
-    {
-        q: 'Can I ask questions about the video?',
-        a: 'Yes! The AI chat uses a RAG (Retrieval Augmented Generation) pipeline to search through the transcript and provide precise answers with clickable timestamp references.',
-    },
-    {
-        q: 'What formats can I export notes in?',
-        a: 'Currently Markdown (.md) and HTML are fully supported. PDF and DOCX export are coming soon.',
-    },
-];
-
-const stats = [
-    { value: '10+', label: 'Note Types' },
-    { value: 'Any', label: 'Video Format' },
-    { value: 'RAG', label: 'AI Search' },
-    { value: 'Free', label: 'To Start' },
-];
-
-function FAQItem({ q, a }: { q: string; a: string }) {
-    const [open, setOpen] = useState(false);
-    return (
-        <div className="border-b border-[hsl(var(--border))]">
-            <button
-                onClick={() => setOpen(!open)}
-                className="flex w-full items-center justify-between py-5 text-left text-[hsl(var(--foreground))] hover:text-[hsl(var(--primary))] transition-colors"
-            >
-                <span className="text-base font-medium pr-4">{q}</span>
-                <ChevronDown className={`h-5 w-5 flex-shrink-0 text-[hsl(var(--muted-foreground))] transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
-            </button>
-            <motion.div
-                initial={false}
-                animate={{ height: open ? 'auto' : 0, opacity: open ? 1 : 0 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-hidden"
-            >
-                <p className="pb-5 text-sm text-[hsl(var(--muted-foreground))] leading-relaxed">{a}</p>
-            </motion.div>
-        </div>
-    );
-}
 
 export function LandingPage() {
     return (
-        <div className="overflow-hidden">
-            {/* ── Hero ──────────────────────────────────────────── */}
-            <section className="mx-auto max-w-6xl px-6 pt-16 pb-24 sm:pt-24 sm:pb-32">
-                <div className="text-center">
-                    {/* Badge */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                        className="inline-flex items-center gap-2 rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-1.5 text-sm text-[hsl(var(--muted-foreground))] mb-8"
-                    >
-                        <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--primary))]" />
-                        Powered by Groq AI & Whisper
-                    </motion.div>
-
-                    {/* Logo */}
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-                        className="flex justify-center mb-6"
-                    >
-                        <img src={logoImg} alt="TubeToMD" className="h-16 w-auto" />
-                    </motion.div>
-
-                    {/* Heading */}
-                    <motion.h1
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                        className="text-5xl font-extrabold tracking-tight sm:text-6xl lg:text-7xl"
-                    >
-                        Turn Videos into{' '}
-                        <span className="text-gradient">Knowledge</span>
-                    </motion.h1>
-
-                    <motion.p
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.4 }}
-                        className="mt-6 text-lg sm:text-xl text-[hsl(var(--muted-foreground))] max-w-2xl mx-auto leading-relaxed"
-                    >
-                        TubeToMD transcribes any YouTube video or uploaded file, then uses AI
-                        to generate summaries, mind maps, flashcards, and lets you ask
-                        questions — all with <span className="text-[hsl(var(--accent))] font-medium">clickable timestamps</span>.
-                    </motion.p>
-
-                    {/* CTA */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.5 }}
-                        className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
-                    >
-                        <Link
-                            to="/register"
-                            className="btn-primary rounded-xl px-8 py-3.5 text-sm font-semibold shadow-lg flex items-center gap-2"
-                        >
-                            <Zap className="h-4 w-4" />
-                            Get Started — It's Free
-                        </Link>
-                        <Link
-                            to="/login"
-                            className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-8 py-3.5 text-sm font-semibold text-[hsl(var(--foreground))] flex items-center gap-2 hover:border-[hsl(var(--primary))]/30 transition-all duration-200"
-                        >
-                            Sign In
-                        </Link>
-                    </motion.div>
-
-                    {/* Stats */}
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.7 }}
-                        className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-lg sm:max-w-2xl mx-auto"
-                    >
-                        {stats.map((stat) => (
-                            <div key={stat.label} className="text-center">
-                                <div className="text-2xl font-bold text-gradient">{stat.value}</div>
-                                <div className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">{stat.label}</div>
-                            </div>
-                        ))}
-                    </motion.div>
-                </div>
-            </section>
-
-            {/* ── Features ─────────────────────────────────────── */}
-            <section className="mx-auto max-w-6xl px-6 pb-24 sm:pb-32">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: '-100px' }}
-                    className="text-center mb-12"
-                >
-                    <h2 className="text-3xl font-bold sm:text-4xl">
-                        Everything you need to <span className="text-gradient">learn faster</span>
-                    </h2>
-                    <p className="mt-4 text-[hsl(var(--muted-foreground))] max-w-xl mx-auto">
-                        From transcription to AI-powered analysis, TubeToMD handles the heavy lifting.
+        <div className="overflow-x-hidden pt-12">
+            <main>
+                {/* Hero Section */}
+                <section className="relative px-6 pt-16 pb-24 md:pt-32 md:pb-48 max-w-7xl mx-auto text-center hero-glow">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface-container-high border border-outline-variant/20 mb-8 animate-fade-in">
+                        <span className="flex h-2 w-2 rounded-full bg-secondary animate-pulse"></span>
+                        <span className="text-xs font-bold tracking-widest text-secondary uppercase">Intelligence v2.0 is live</span>
+                    </div>
+                    <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight text-white mb-8 leading-[1.1] animate-fade-in-up">
+                        Transform Videos into <br />
+                        <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Structured Knowledge</span>
+                    </h1>
+                    <p className="text-lg md:text-xl text-on-surface-variant max-w-2xl mx-auto mb-12 font-medium leading-relaxed animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+                        AI-powered notes, mindmaps, and summaries from any YouTube video in seconds. Turn passive watching into active learning.
                     </p>
-                </motion.div>
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+                        <Link to="/register" className="w-full sm:w-auto px-10 py-5 bg-gradient-to-br from-primary-container to-primary text-white rounded-3xl font-extrabold text-lg shadow-[0_0_30px_rgba(219,39,119,0.3)] hover:shadow-[0_0_50px_rgba(219,39,119,0.5)] active:scale-95 transition-all duration-300">
+                            Start for Free
+                        </Link>
+                        <Link to="/login" className="w-full sm:w-auto px-10 py-5 glass-card text-on-surface rounded-3xl font-bold text-lg hover:bg-surface-container-high transition-all">
+                            View Demo
+                        </Link>
+                    </div>
 
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 stagger-children">
-                    {features.map((f) => (
-                        <motion.div
-                            key={f.title}
-                            whileHover={{ y: -4 }}
-                            className="card p-6 card-hover cursor-default"
-                        >
-                            <div className="inline-flex rounded-xl p-2.5 bg-[hsl(var(--secondary))] mb-4">
-                                <f.icon className="h-6 w-6 text-[hsl(var(--primary))]" />
-                            </div>
-                            <h3 className="text-lg font-semibold">{f.title}</h3>
-                            <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))] leading-relaxed">
-                                {f.description}
-                            </p>
-                        </motion.div>
-                    ))}
-                </div>
-            </section>
-
-            {/* ── How It Works ─────────────────────────────────── */}
-            <section className="mx-auto max-w-5xl px-6 pb-24 sm:pb-32">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: '-100px' }}
-                    className="text-center mb-12"
-                >
-                    <h2 className="text-3xl font-bold sm:text-4xl">
-                        Three steps to <span className="text-gradient">knowledge</span>
-                    </h2>
-                </motion.div>
-
-                <div className="grid gap-8 md:grid-cols-3 stagger-children">
-                    {[
-                        { step: '01', title: 'Paste or Upload', desc: 'Drop a YouTube URL or upload a video. Audio extraction happens right in your browser.' },
-                        { step: '02', title: 'AI Processes', desc: 'Groq Whisper transcribes the audio. Groq AI generates notes, summaries, mind maps, and more.' },
-                        { step: '03', title: 'Learn & Export', desc: 'Browse notes with synced timestamps, ask follow-up questions, and export in any format.' },
-                    ].map((item) => (
-                        <div key={item.step} className="card p-6 text-center card-hover">
-                            <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-[hsl(var(--primary))] text-white font-bold text-lg mb-4">
-                                {item.step}
-                            </div>
-                            <h3 className="text-lg font-semibold">{item.title}</h3>
-                            <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))] leading-relaxed">{item.desc}</p>
+                    {/* Mock Dashboard / Abstract Graphic */}
+                    <div className="relative max-w-5xl mx-auto group animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+                        <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 via-secondary/10 to-primary/20 rounded-[3rem] blur-3xl opacity-50 group-hover:opacity-75 transition duration-1000"></div>
+                        <div className="relative glass-card rounded-3xl p-4 overflow-hidden border border-white/10 shadow-2xl">
+                            <img alt="Knowledge Interface" className="rounded-2xl w-full opacity-90 group-hover:opacity-100 transition-opacity duration-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXWxva0ijTH7kgczMEqvRQl32n99a_5sjl4QSeu7yyAJFKosJBC-D0pYCwAmNBXm4PNtOjp5BybD1uc_w0Uya55okPxbbEp4j-kPN-Fj02ESpnSoX57di2OWN2yMySaVmP5Q7bz7DNc_EWlBmNVzxJxo5uiVOvAYrcHPR_Fy32eETlNYt0tt9MSRbeMFytNyuDp18-rPhJMO8q5GmXyJuoWd7dkW1RQprdQ7LRW-A5vzpQofPFsPFX8ogCO_aSSnhNdD4JiKm50iHz" />
                         </div>
-                    ))}
-                </div>
-            </section>
+                    </div>
+                </section>
 
-            {/* ── Why TubeToMD ─────────────────────────────────── */}
-            <section className="mx-auto max-w-4xl px-6 pb-24 sm:pb-32">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    className="card p-8 sm:p-12"
-                >
-                    <h2 className="text-2xl sm:text-3xl font-bold text-center mb-8">
-                        Why choose <span className="text-gradient">TubeToMD</span>?
-                    </h2>
-                    <div className="grid sm:grid-cols-2 gap-4">
-                        {[
-                            'Browser-side audio extraction — privacy first',
-                            'AI-powered with Groq Llama 3.3 70B',
-                            'RAG-based chat with timestamp citations',
-                            'Mermaid mind maps & flowcharts',
-                            'Multi-format export (MD, HTML, PDF)',
-                            'Open source & self-hostable',
-                        ].map((item) => (
-                            <div key={item} className="flex items-start gap-3">
-                                <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[hsl(var(--accent))]/15 mt-0.5">
-                                    <Check className="h-3 w-3 text-[hsl(var(--accent))]" />
+                {/* Features Grid */}
+                <section className="px-6 py-32 bg-surface-container-lowest/50">
+                    <div className="max-w-7xl mx-auto">
+                        <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
+                            <div className="max-w-xl">
+                                <h2 className="text-4xl md:text-5xl font-black text-white mb-4 tracking-tight">The Ethereal Workspace</h2>
+                                <p className="text-on-surface-variant text-lg">Beyond simple transcripts. We restructure information for the way your brain actually works.</p>
+                            </div>
+                            <div className="hidden md:block">
+                                <span className="text-sm font-bold uppercase tracking-widest text-primary">Core Capabilities</span>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {/* Card 1 */}
+                            <div className="glass-card p-8 rounded-3xl transition-all duration-500 hover:-translate-y-2 group hover:shadow-[0_20px_40px_-15px_rgba(219,39,119,0.15)]">
+                                <div className="w-12 h-12 rounded-2xl bg-primary-container/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                    <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
                                 </div>
-                                <span className="text-sm text-[hsl(var(--muted-foreground))]">{item}</span>
+                                <h3 className="text-xl font-bold text-white mb-3">AI Summaries</h3>
+                                <p className="text-on-surface-variant text-sm leading-relaxed mb-4">Concise, bullet-point takeaways that capture the essence of any 2-hour video in 2 minutes.</p>
                             </div>
-                        ))}
-                    </div>
-                </motion.div>
-            </section>
 
-            {/* ── FAQ ──────────────────────────────────────────── */}
-            <section className="mx-auto max-w-3xl px-6 pb-24 sm:pb-32">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                >
-                    <h2 className="text-3xl font-bold text-center mb-10">
-                        Frequently Asked Questions
-                    </h2>
-                    <div className="divide-y-0">
-                        {faqs.map((faq) => (
-                            <FAQItem key={faq.q} q={faq.q} a={faq.a} />
-                        ))}
-                    </div>
-                </motion.div>
-            </section>
-
-            {/* ── Bottom CTA ───────────────────────────────────── */}
-            <section className="mx-auto max-w-4xl px-6 pb-24 sm:pb-32">
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    className="card p-10 sm:p-16 text-center"
-                >
-                    <h2 className="text-3xl sm:text-4xl font-bold">
-                        Ready to transform how you learn?
-                    </h2>
-                    <p className="mt-4 text-[hsl(var(--muted-foreground))] max-w-lg mx-auto">
-                        Join learners using TubeToMD to turn video content into actionable knowledge.
-                    </p>
-                    <Link
-                        to="/register"
-                        className="btn-primary inline-flex items-center gap-2 mt-8 rounded-xl px-8 py-3.5 text-sm font-bold shadow-xl"
-                    >
-                        <Zap className="h-4 w-4" />
-                        Start for Free
-                    </Link>
-                </motion.div>
-            </section>
-
-            {/* ── Footer ───────────────────────────────────────── */}
-            <footer className="border-t border-[hsl(var(--border))] bg-[hsl(var(--card))]">
-                <div className="mx-auto max-w-6xl px-6 py-12">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-                        <div className="col-span-2 md:col-span-1">
-                            <div className="flex items-center gap-2 mb-3">
-                                <img src={logoImg} alt="TubeToMD" className="h-7 w-auto" />
-                                <span className="font-bold text-gradient">TubeToMD</span>
+                            {/* Card 2 */}
+                            <div className="glass-card p-8 rounded-3xl transition-all duration-500 hover:-translate-y-2 group hover:shadow-[0_20px_40px_-15px_rgba(219,39,119,0.15)]">
+                                <div className="w-12 h-12 rounded-2xl bg-secondary/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                    <span className="material-symbols-outlined text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>hub</span>
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-3">Mindmaps & Diagrams</h3>
+                                <p className="text-on-surface-variant text-sm leading-relaxed mb-4">Visualize complex knowledge instantly with auto-generated logical maps and concept flows.</p>
                             </div>
-                            <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed">
-                                Turn any video into structured, AI-powered study notes.
-                            </p>
-                        </div>
-                        <div>
-                            <h4 className="text-sm font-semibold mb-3">Product</h4>
-                            <ul className="space-y-2 text-sm text-[hsl(var(--muted-foreground))]">
-                                <li><Link to="/register" className="hover:text-[hsl(var(--foreground))] transition">Get Started</Link></li>
-                                <li><Link to="/login" className="hover:text-[hsl(var(--foreground))] transition">Sign In</Link></li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 className="text-sm font-semibold mb-3">Resources</h4>
-                            <ul className="space-y-2 text-sm text-[hsl(var(--muted-foreground))]">
-                                <li><a href="#" className="hover:text-[hsl(var(--foreground))] transition">Documentation</a></li>
-                                <li><a href="#" className="hover:text-[hsl(var(--foreground))] transition">API Reference</a></li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 className="text-sm font-semibold mb-3">Legal</h4>
-                            <ul className="space-y-2 text-sm text-[hsl(var(--muted-foreground))]">
-                                <li><a href="#" className="hover:text-[hsl(var(--foreground))] transition">Privacy Policy</a></li>
-                                <li><a href="#" className="hover:text-[hsl(var(--foreground))] transition">Terms of Service</a></li>
-                            </ul>
+
+                            {/* Card 3 */}
+                            <div className="glass-card p-8 rounded-3xl transition-all duration-500 hover:-translate-y-2 group hover:shadow-[0_20px_40px_-15px_rgba(219,39,119,0.15)]">
+                                <div className="w-12 h-12 rounded-2xl bg-surface-container-highest flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                    <span className="material-symbols-outlined text-on-surface" style={{ fontVariationSettings: "'FILL' 1" }}>subtitles</span>
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-3">Interactive Transcript</h3>
+                                <p className="text-on-surface-variant text-sm leading-relaxed mb-4">Clickable timestamps connected directly to your notes. Jump to exact moments instantly.</p>
+                            </div>
+
+                            {/* Card 4 */}
+                            <div className="glass-card p-8 rounded-3xl transition-all duration-500 hover:-translate-y-2 group hover:shadow-[0_20px_40px_-15px_rgba(219,39,119,0.15)]">
+                                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                    <span className="material-symbols-outlined text-primary-fixed" style={{ fontVariationSettings: "'FILL' 1" }}>ios_share</span>
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-3">Export Anywhere</h3>
+                                <p className="text-on-surface-variant text-sm leading-relaxed mb-4">One-click sync to Notion, Obsidian, and Markdown. Your knowledge lives where you work.</p>
+                            </div>
                         </div>
                     </div>
-                    <div className="mt-10 pt-6 border-t border-[hsl(var(--border))] flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                            &copy; {new Date().getFullYear()} TubeToMD. All rights reserved.
-                        </p>
-                        <a href="https://github.com" target="_blank" rel="noopener" className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition">
-                            <Github className="h-5 w-5" />
+                </section>
+
+                {/* How It Works */}
+                <section className="px-6 py-32 overflow-hidden">
+                    <div className="max-w-7xl mx-auto">
+                        <div className="text-center mb-24">
+                            <h2 className="text-4xl md:text-5xl font-black text-white mb-6">Three Steps to Mastery</h2>
+                            <p className="text-on-surface-variant max-w-xl mx-auto">From URL to expertise in under 60 seconds.</p>
+                        </div>
+
+                        <div className="relative grid grid-cols-1 md:grid-cols-3 gap-16 md:gap-8">
+                            {/* Connector Line (Desktop) */}
+                            <div className="hidden md:block absolute top-1/2 left-0 w-full h-px bg-gradient-to-r from-transparent via-outline-variant/30 to-transparent -z-10"></div>
+
+                            {/* Step 1 */}
+                            <div className="relative flex flex-col items-center text-center">
+                                <div className="w-16 h-16 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center text-2xl font-black text-primary mb-8 shadow-xl">1</div>
+                                <div className="glass-card p-6 rounded-3xl w-full">
+                                    <h4 className="text-xl font-bold text-white mb-4">Paste Link</h4>
+                                    <div className="bg-surface-container-lowest rounded-xl p-3 flex items-center gap-3 border border-outline-variant/10">
+                                        <span className="material-symbols-outlined text-slate-500 text-sm">link</span>
+                                        <div className="h-2 w-24 bg-slate-700 rounded-full"></div>
+                                    </div>
+                                    <p className="text-on-surface-variant text-sm mt-6">Drop any YouTube URL into the intelligent input field.</p>
+                                </div>
+                            </div>
+
+                            {/* Step 2 */}
+                            <div className="relative flex flex-col items-center text-center">
+                                <div className="w-16 h-16 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center text-2xl font-black text-secondary mb-8 shadow-xl">2</div>
+                                <div className="glass-card p-6 rounded-3xl w-full">
+                                    <h4 className="text-xl font-bold text-white mb-4">AI Processes</h4>
+                                    <div className="flex justify-center py-2">
+                                        <div className="relative w-10 h-10">
+                                            <div className="absolute inset-0 border-4 border-secondary/20 rounded-full"></div>
+                                            <div className="absolute inset-0 border-4 border-t-secondary rounded-full animate-spin"></div>
+                                        </div>
+                                    </div>
+                                    <p className="text-on-surface-variant text-sm mt-6">Our neural engine analyzes audio, video, and sentiment.</p>
+                                </div>
+                            </div>
+
+                            {/* Step 3 */}
+                            <div className="relative flex flex-col items-center text-center">
+                                <div className="w-16 h-16 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center text-2xl font-black text-on-surface mb-8 shadow-xl">3</div>
+                                <div className="glass-card p-6 rounded-3xl w-full">
+                                    <h4 className="text-xl font-bold text-white mb-4">Get Notes</h4>
+                                    <div className="space-y-2 text-left px-2">
+                                        <div className="h-1.5 w-full bg-slate-600 rounded-full"></div>
+                                        <div className="h-1.5 w-4/5 bg-slate-600 rounded-full"></div>
+                                        <div className="h-1.5 w-3/4 bg-primary/40 rounded-full"></div>
+                                    </div>
+                                    <p className="text-on-surface-variant text-sm mt-6">Receive structured Markdown or a visual mindmap.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* CTA Section */}
+                <section className="px-6 py-24">
+                    <div className="max-w-5xl mx-auto glass-card rounded-[3rem] p-12 md:p-24 text-center relative overflow-hidden">
+                        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-primary/20 rounded-full blur-[100px]"></div>
+                        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-secondary/10 rounded-full blur-[100px]"></div>
+
+                        <h2 className="text-4xl md:text-6xl font-black text-white mb-8 leading-tight">Ready to stop watching and <br />start knowing?</h2>
+                        <p className="text-on-surface-variant text-lg mb-12 max-w-xl mx-auto">Join 10,000+ students, researchers, and creators using TubeToMD to master content faster.</p>
+
+                        <Link to="/register" className="inline-block px-12 py-5 bg-gradient-to-br from-primary-container to-primary text-white rounded-3xl font-extrabold text-xl shadow-[0_0_30px_rgba(219,39,119,0.3)] hover:scale-105 transition-all duration-300">
+                            Get Started Free
+                        </Link>
+                        <p className="mt-8 text-slate-500 text-sm">No credit card required. Free tier forever.</p>
+                    </div>
+                </section>
+            </main>
+
+            {/* Footer */}
+            <footer className="bg-slate-950 border-t border-slate-900 w-full pt-20 pb-10">
+                <div className="flex flex-col md:flex-row justify-between items-center px-8 max-w-7xl mx-auto gap-10">
+                    <div className="flex flex-col items-center md:items-start">
+                        <div className="flex items-center gap-2 mb-4">
+                            <span className="material-symbols-outlined text-primary-container" style={{ fontVariationSettings: "'FILL' 1" }}>movie_edit</span>
+                            <span className="text-lg font-bold text-slate-200">TubeToMD</span>
+                        </div>
+                        <p className="text-sm text-slate-500 font-['Inter']">© {(new Date()).getFullYear()} TubeToMD. The Intelligent Lume.</p>
+                    </div>
+                    <div className="flex flex-wrap justify-center gap-8">
+                        <Link to="#" className="text-slate-500 hover:text-teal-400 transition-colors text-sm">Privacy Policy</Link>
+                        <Link to="#" className="text-slate-500 hover:text-teal-400 transition-colors text-sm">Terms of Service</Link>
+                        <Link to="#" className="text-slate-500 hover:text-teal-400 transition-colors text-sm">Contact Us</Link>
+                    </div>
+                    <div className="flex gap-6">
+                        <a href="https://github.com/AkshatRauthan/TubeToMD" target="_blank" rel="noreferrer" className="text-slate-500 hover:text-pink-400 transition-opacity duration-200">
+                            <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"></path></svg>
                         </a>
                     </div>
                 </div>

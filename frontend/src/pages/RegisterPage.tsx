@@ -6,7 +6,6 @@ import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
 import type { ApiResponse, User } from '@/types';
 import { Loader2, Mail, Lock, User as UserIcon } from 'lucide-react';
-import logoImg from '@/assets/TubeToMD.png';
 
 export function RegisterPage() {
     const [name, setName] = useState('');
@@ -45,123 +44,130 @@ export function RegisterPage() {
     };
 
     return (
-        <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-12">
-            <motion.div
-                initial={{ opacity: 0, y: 24, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.4, ease: 'easeOut' }}
-                className="w-full max-w-md card rounded-2xl p-8 shadow-xl"
-            >
-                <div className="flex justify-center mb-6">
-                    <img src={logoImg} alt="TubeToMD" className="h-10 w-auto" />
-                </div>
-
-                <h2 className="text-2xl font-bold text-center">Create Account</h2>
-                <p className="mt-2 text-center text-sm text-[hsl(var(--muted-foreground))]">
-                    Start extracting knowledge from videos
-                </p>
-
-                {error && (
-                    <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        className="mt-4 rounded-xl bg-[hsl(var(--destructive))]/10 border border-[hsl(var(--destructive))]/20 p-3 text-sm text-[hsl(var(--destructive))]"
-                    >
-                        {error}
-                    </motion.div>
-                )}
-
-                <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium mb-1.5">Name</label>
-                        <div className="relative">
-                            <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-                            <input
-                                type="text"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                required
-                                className="w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--secondary))] pl-10 pr-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--ring))] focus:border-transparent transition-all"
-                                placeholder="Your name"
-                            />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1.5">Email</label>
-                        <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-                            <input
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                                className="w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--secondary))] pl-10 pr-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--ring))] focus:border-transparent transition-all"
-                                placeholder="you@example.com"
-                            />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1.5">Password</label>
-                        <div className="relative">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-                            <input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                                minLength={6}
-                                className="w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--secondary))] pl-10 pr-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--ring))] focus:border-transparent transition-all"
-                                placeholder="Min 6 characters"
-                            />
-                        </div>
-                    </div>
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="btn-primary w-full rounded-xl py-2.5 text-sm font-semibold disabled:opacity-50 transition flex items-center justify-center gap-2"
-                    >
-                        {loading ? (
-                            <>
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                Creating account...
-                            </>
-                        ) : (
-                            'Create Account'
-                        )}
-                    </button>
-                </form>
-
-                <div className="relative my-6">
-                    <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-[hsl(var(--border))]" />
-                    </div>
-                    <div className="relative flex justify-center text-xs">
-                        <span className="px-3 bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))]">
-                            or continue with
-                        </span>
-                    </div>
-                </div>
-
-                <button
-                    onClick={handleGoogleSignup}
-                    className="w-full flex items-center justify-center gap-3 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] py-2.5 text-sm font-medium hover:bg-[hsl(var(--muted))] transition-all duration-200"
+        <main className="flex-grow flex items-center justify-center pt-24 pb-12 px-4 relative min-h-[calc(100vh-4rem)]">
+            {/* Background Ambient Glow */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] hero-glow rounded-full pointer-events-none"></div>
+            
+            {/* Registration Card */}
+            <div className="w-full max-w-md relative z-10">
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, ease: 'easeOut' }}
+                    className="glass-card p-8 md:p-10 rounded-[2rem] border border-[var(--color-outline-variant)]/20 shadow-2xl transition-all duration-500 hover:shadow-pink-500/10 bg-[#111827]/70"
                 >
-                    <svg className="h-4 w-4" viewBox="0 0 24 24">
-                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
-                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                    </svg>
-                    Continue with Google
-                </button>
+                    <div className="text-center mb-8">
+                        <h1 className="text-3xl font-black tracking-tight text-white mb-2 font-headline">Create account</h1>
+                        <p className="text-[var(--color-on-surface-variant)] font-medium leading-relaxed">Join TubeToMD to transform knowledge.</p>
+                    </div>
 
-                <p className="mt-6 text-center text-sm text-[hsl(var(--muted-foreground))]">
-                    Already have an account?{' '}
-                    <Link to="/login" className="font-semibold text-[hsl(var(--primary))] hover:opacity-80 transition">
-                        Sign In
-                    </Link>
-                </p>
-            </motion.div>
-        </div>
+                    {error && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            className="mb-6 rounded-xl bg-[var(--color-error)]/10 border border-[var(--color-error)]/20 p-3 text-sm text-[var(--color-error)]"
+                        >
+                            {error}
+                        </motion.div>
+                    )}
+
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        {/* Name Input */}
+                        <div className="space-y-2">
+                            <label className="block text-xs font-bold uppercase tracking-widest text-[var(--color-on-surface-variant)] ml-1">Full Name</label>
+                            <div className="relative group">
+                                <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--color-outline)] group-focus-within:text-[var(--color-primary)] transition-colors" />
+                                <input 
+                                    className="w-full bg-[#111827] pl-12 pr-4 py-4 border border-[var(--color-outline-variant)]/30 rounded-xl text-[var(--color-on-surface)] placeholder:text-[var(--color-outline)]/50 focus:ring-2 focus:ring-[var(--color-primary-container)] focus:border-transparent transition-all outline-none" 
+                                    placeholder="John Doe" 
+                                    type="text"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        {/* Email Input */}
+                        <div className="space-y-2">
+                            <label className="block text-xs font-bold uppercase tracking-widest text-[var(--color-on-surface-variant)] ml-1">Email Address</label>
+                            <div className="relative group">
+                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--color-outline)] group-focus-within:text-[var(--color-primary)] transition-colors" />
+                                <input 
+                                    className="w-full bg-[#111827] pl-12 pr-4 py-4 border border-[var(--color-outline-variant)]/30 rounded-xl text-[var(--color-on-surface)] placeholder:text-[var(--color-outline)]/50 focus:ring-2 focus:ring-[var(--color-primary-container)] focus:border-transparent transition-all outline-none" 
+                                    placeholder="name@example.com" 
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        {/* Password Input */}
+                        <div className="space-y-2">
+                            <label className="block text-xs font-bold uppercase tracking-widest text-[var(--color-on-surface-variant)] ml-1">Password</label>
+                            <div className="relative group">
+                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--color-outline)] group-focus-within:text-[var(--color-primary)] transition-colors" />
+                                <input 
+                                    className="w-full bg-[#111827] pl-12 pr-4 py-4 border border-[var(--color-outline-variant)]/30 rounded-xl text-[var(--color-on-surface)] placeholder:text-[var(--color-outline)]/50 focus:ring-2 focus:ring-[var(--color-primary-container)] focus:border-transparent transition-all outline-none" 
+                                    placeholder="••••••••" 
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                    minLength={6}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="pt-2 space-y-4">
+                            <button 
+                                type="submit"
+                                disabled={loading}
+                                className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-[var(--color-primary-container)] to-[#ff80ab] text-white font-bold rounded-xl shadow-[0_0_20px_rgba(219,39,119,0.3)] hover:shadow-[0_0_30px_rgba(219,39,119,0.5)] active:scale-[0.98] transition-all duration-300 text-lg disabled:opacity-50 disabled:pointer-events-none"
+                            >
+                                {loading ? (
+                                    <>
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                        Creating account...
+                                    </>
+                                ) : (
+                                    'Sign Up'
+                                )}
+                            </button>
+
+                            <div className="relative flex items-center justify-center py-2">
+                                <div className="flex-grow border-t border-[var(--color-outline-variant)]/20"></div>
+                                <span className="px-4 text-xs font-bold text-[var(--color-on-surface-variant)] uppercase tracking-tight">or continue with</span>
+                                <div className="flex-grow border-t border-[var(--color-outline-variant)]/20"></div>
+                            </div>
+
+                            <button 
+                                type="button"
+                                onClick={handleGoogleSignup}
+                                className="w-full flex items-center justify-center gap-3 bg-[var(--color-surface-container-high)]/40 hover:bg-[var(--color-surface-container-highest)] text-[var(--color-on-surface)] font-semibold rounded-xl border border-[var(--color-outline-variant)]/20 py-4 transition-all duration-300 active:scale-[0.98]"
+                            >
+                                <svg className="w-5 h-5 transition-transform" viewBox="0 0 24 24">
+                                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
+                                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
+                                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"></path>
+                                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path>
+                                </svg>
+                                Google
+                            </button>
+                        </div>
+                    </form>
+
+                    <div className="mt-8 text-center text-sm font-medium text-[var(--color-on-surface-variant)]">
+                        Already have an account? 
+                        <Link to="/login" className="text-[var(--color-primary)] font-bold hover:underline decoration-2 underline-offset-4 ml-1">
+                            Sign in
+                        </Link>
+                    </div>
+                </motion.div>
+            </div>
+        </main>
     );
 }

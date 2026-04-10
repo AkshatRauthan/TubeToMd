@@ -3,7 +3,6 @@ import { useAuthStore } from '@/stores/auth.store';
 import { LogOut, Menu, X, LayoutDashboard } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import logoImg from '@/assets/TubeToMD.png';
 
 export function Navbar() {
     const { user, isAuthenticated, logout } = useAuthStore();
@@ -16,124 +15,121 @@ export function Navbar() {
     };
 
     return (
-        <nav className="sticky top-0 z-50 bg-[hsl(var(--card))]/80 backdrop-blur-md border-b border-[hsl(var(--border))]">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div className="flex h-16 items-center justify-between">
-                    {/* Logo */}
-                    <Link to="/" className="flex items-center gap-2.5 group">
-                        <img
-                            src={logoImg}
-                            alt="TubeToMD"
-                            className="h-8 w-auto"
-                        />
-                        <span className="text-xl font-bold text-gradient">
-                            TubeToMD
-                        </span>
+        <nav className="fixed top-0 w-full z-50 bg-slate-950/70 backdrop-blur-xl border-b border-slate-800/50 shadow-[0_0_40px_-15px_rgba(219,39,119,0.3)]">
+            <div className="flex justify-between items-center px-6 py-4 max-w-7xl mx-auto">
+                {/* Logo */}
+                <Link to="/" className="flex items-center gap-2 group cursor-pointer">
+                    <span className="material-symbols-outlined text-primary-container text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>movie_edit</span>
+                    <span className="text-2xl font-black bg-gradient-to-br from-pink-500 to-pink-300 bg-clip-text text-transparent tracking-tighter">TubeToMD</span>
+                </Link>
+
+                {/* Desktop nav links */}
+                <div className="hidden md:flex items-center gap-8">
+                    <Link to="/" className="text-pink-500 font-semibold transition-colors flex items-center gap-1">
+                        Home
                     </Link>
-
-                    {/* Desktop nav */}
-                    <div className="hidden md:flex items-center gap-3">
-                        {isAuthenticated ? (
-                            <>
-                                <Link
-                                    to="/dashboard"
-                                    className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary))] transition-all duration-200"
-                                >
-                                    <LayoutDashboard className="h-4 w-4" />
-                                    Dashboard
-                                </Link>
-                                <div className="h-5 w-px bg-[hsl(var(--border))]" />
-                                <span className="text-sm text-[hsl(var(--muted-foreground))] font-medium">
-                                    {user?.name}
-                                </span>
-                                <button
-                                    onClick={handleLogout}
-                                    className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive))]/10 transition-all duration-200"
-                                >
-                                    <LogOut className="h-4 w-4" />
-                                    Logout
-                                </button>
-                            </>
-                        ) : (
-                            <>
-                                <Link
-                                    to="/login"
-                                    className="rounded-lg px-4 py-2 text-sm font-medium text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-all duration-200"
-                                >
-                                    Login
-                                </Link>
-                                <Link
-                                    to="/register"
-                                    className="btn-primary rounded-lg px-5 py-2 text-sm font-semibold shadow-md"
-                                >
-                                    Sign Up
-                                </Link>
-                            </>
-                        )}
-                    </div>
-
-                    {/* Mobile menu button */}
-                    <div className="flex md:hidden items-center gap-2">
-                        <button
-                            className="rounded-lg p-1.5 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))] transition"
-                            onClick={() => setMobileOpen(!mobileOpen)}
-                        >
-                            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-                        </button>
-                    </div>
+                    {isAuthenticated && (
+                        <Link to="/dashboard" className="text-slate-400 hover:text-slate-100 transition-colors flex items-center gap-1">
+                            Dashboard
+                        </Link>
+                    )}
                 </div>
 
-                {/* Mobile nav */}
-                <AnimatePresence>
-                    {mobileOpen && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="md:hidden overflow-hidden"
-                        >
-                            <div className="py-4 space-y-1">
-                                {isAuthenticated ? (
-                                    <>
-                                        <Link
-                                            to="/dashboard"
-                                            className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm hover:bg-[hsl(var(--secondary))] transition"
-                                            onClick={() => setMobileOpen(false)}
-                                        >
-                                            <LayoutDashboard className="h-4 w-4" />
-                                            Dashboard
-                                        </Link>
-                                        <button
-                                            onClick={() => { handleLogout(); setMobileOpen(false); }}
-                                            className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive))]/10 w-full transition"
-                                        >
-                                            <LogOut className="h-4 w-4" />
-                                            Logout
-                                        </button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Link
-                                            to="/login"
-                                            className="block rounded-lg px-3 py-2.5 text-sm hover:bg-[hsl(var(--secondary))] transition"
-                                            onClick={() => setMobileOpen(false)}
-                                        >
-                                            Login
-                                        </Link>
-                                        <Link
-                                            to="/register"
-                                            className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-[hsl(var(--primary))] hover:bg-[hsl(var(--secondary))] transition"
-                                            onClick={() => setMobileOpen(false)}
-                                        >
-                                            Sign Up
-                                        </Link>
-                                    </>
-                                )}
-                            </div>
-                        </motion.div>
+                {/* Desktop actions */}
+                <div className="hidden md:flex items-center gap-6">
+                    {isAuthenticated ? (
+                        <>
+                            <div className="h-5 w-px bg-slate-800" />
+                            <span className="text-sm text-slate-400 font-medium">
+                                {user?.name}
+                            </span>
+                            <button
+                                onClick={handleLogout}
+                                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-rose-500 hover:bg-rose-500/10 transition-all duration-200"
+                            >
+                                <LogOut className="h-4 w-4" />
+                                Logout
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <Link
+                                to="/login"
+                                className="text-slate-400 hover:text-slate-100 transition-colors text-sm font-medium"
+                            >
+                                Login
+                            </Link>
+                            <Link
+                                to="/register"
+                                className="bg-gradient-to-br from-primary-container to-primary text-white px-6 py-2.5 rounded-3xl font-bold text-sm shadow-[0_4px_14px_0_rgba(219,39,119,0.39)] hover:shadow-[0_6px_20px_rgba(219,39,119,0.23)] hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all duration-300"
+                            >
+                                Sign Up
+                            </Link>
+                        </>
                     )}
-                </AnimatePresence>
+                </div>
+
+                {/* Mobile menu button */}
+                <div className="flex md:hidden items-center gap-2">
+                    <button
+                        className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 transition"
+                        onClick={() => setMobileOpen(!mobileOpen)}
+                    >
+                        {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                    </button>
+                </div>
             </div>
+
+            {/* Mobile nav */}
+            <AnimatePresence>
+                {mobileOpen && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="md:hidden overflow-hidden bg-slate-900 border-t border-slate-800"
+                    >
+                        <div className="py-4 px-6 space-y-4">
+                            {isAuthenticated ? (
+                                <>
+                                    <Link
+                                        to="/dashboard"
+                                        className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-white hover:bg-slate-800 transition"
+                                        onClick={() => setMobileOpen(false)}
+                                    >
+                                        <LayoutDashboard className="h-4 w-4" />
+                                        Dashboard
+                                    </Link>
+                                    <button
+                                        onClick={() => { handleLogout(); setMobileOpen(false); }}
+                                        className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-rose-500 hover:bg-rose-500/10 w-full transition"
+                                    >
+                                        <LogOut className="h-4 w-4" />
+                                        Logout
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <Link
+                                        to="/login"
+                                        className="block rounded-lg px-3 py-2.5 text-sm text-white hover:bg-slate-800 transition"
+                                        onClick={() => setMobileOpen(false)}
+                                    >
+                                        Login
+                                    </Link>
+                                    <Link
+                                        to="/register"
+                                        className="block text-center bg-gradient-to-br from-primary-container to-primary text-white px-6 py-2.5 rounded-3xl font-bold text-sm shadow-[0_4px_14px_0_rgba(219,39,119,0.39)] transition-all"
+                                        onClick={() => setMobileOpen(false)}
+                                    >
+                                        Sign Up
+                                    </Link>
+                                </>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </nav>
     );
 }
