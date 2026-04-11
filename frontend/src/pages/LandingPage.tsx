@@ -10,7 +10,7 @@ export function LandingPage() {
                         <span className="flex h-2 w-2 rounded-full bg-secondary animate-pulse"></span>
                         <span className="text-xs font-bold tracking-widest text-secondary uppercase">Intelligence v2.0 is live</span>
                     </div>
-                    <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight text-white mb-8 leading-[1.1] animate-fade-in-up">
+                    <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight text-slate-900 dark:text-white mb-8 leading-[1.1] animate-fade-in-up">
                         Transform Videos into <br />
                         <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Structured Knowledge</span>
                     </h1>
@@ -40,7 +40,7 @@ export function LandingPage() {
                     <div className="max-w-7xl mx-auto">
                         <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
                             <div className="max-w-xl">
-                                <h2 className="text-4xl md:text-5xl font-black text-white mb-4 tracking-tight">The Ethereal Workspace</h2>
+                                <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">The Ethereal Workspace</h2>
                                 <p className="text-on-surface-variant text-lg">Beyond simple transcripts. We restructure information for the way your brain actually works.</p>
                             </div>
                             <div className="hidden md:block">
@@ -54,7 +54,7 @@ export function LandingPage() {
                                 <div className="w-12 h-12 rounded-2xl bg-primary-container/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                                     <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
                                 </div>
-                                <h3 className="text-xl font-bold text-white mb-3">AI Summaries</h3>
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">AI Summaries</h3>
                                 <p className="text-on-surface-variant text-sm leading-relaxed mb-4">Concise, bullet-point takeaways that capture the essence of any 2-hour video in 2 minutes.</p>
                             </div>
 
@@ -63,7 +63,7 @@ export function LandingPage() {
                                 <div className="w-12 h-12 rounded-2xl bg-secondary/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                                     <span className="material-symbols-outlined text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>hub</span>
                                 </div>
-                                <h3 className="text-xl font-bold text-white mb-3">Mindmaps & Diagrams</h3>
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Mindmaps & Diagrams</h3>
                                 <p className="text-on-surface-variant text-sm leading-relaxed mb-4">Visualize complex knowledge instantly with auto-generated logical maps and concept flows.</p>
                             </div>
 
@@ -72,7 +72,7 @@ export function LandingPage() {
                                 <div className="w-12 h-12 rounded-2xl bg-surface-container-highest flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                                     <span className="material-symbols-outlined text-on-surface" style={{ fontVariationSettings: "'FILL' 1" }}>subtitles</span>
                                 </div>
-                                <h3 className="text-xl font-bold text-white mb-3">Interactive Transcript</h3>
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Interactive Transcript</h3>
                                 <p className="text-on-surface-variant text-sm leading-relaxed mb-4">Clickable timestamps connected directly to your notes. Jump to exact moments instantly.</p>
                             </div>
 
@@ -81,7 +81,7 @@ export function LandingPage() {
                                 <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                                     <span className="material-symbols-outlined text-primary-fixed" style={{ fontVariationSettings: "'FILL' 1" }}>ios_share</span>
                                 </div>
-                                <h3 className="text-xl font-bold text-white mb-3">Export Anywhere</h3>
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Export Anywhere</h3>
                                 <p className="text-on-surface-variant text-sm leading-relaxed mb-4">One-click sync to Notion, Obsidian, and Markdown. Your knowledge lives where you work.</p>
                             </div>
                         </div>
@@ -92,7 +92,7 @@ export function LandingPage() {
                 <section className="px-6 py-32 overflow-hidden">
                     <div className="max-w-7xl mx-auto">
                         <div className="text-center mb-24">
-                            <h2 className="text-4xl md:text-5xl font-black text-white mb-6">Three Steps to Mastery</h2>
+                            <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white mb-6">Three Steps to Mastery</h2>
                             <p className="text-on-surface-variant max-w-xl mx-auto">From URL to expertise in under 60 seconds.</p>
                         </div>
 
@@ -104,10 +104,10 @@ export function LandingPage() {
                             <div className="relative flex flex-col items-center text-center">
                                 <div className="w-16 h-16 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center text-2xl font-black text-primary mb-8 shadow-xl">1</div>
                                 <div className="glass-card p-6 rounded-3xl w-full">
-                                    <h4 className="text-xl font-bold text-white mb-4">Paste Link</h4>
+                                    <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Paste Link</h4>
                                     <div className="bg-surface-container-lowest rounded-xl p-3 flex items-center gap-3 border border-outline-variant/10">
                                         <span className="material-symbols-outlined text-slate-500 text-sm">link</span>
-                                        <div className="h-2 w-24 bg-slate-700 rounded-full"></div>
+                                        <div className="h-2 w-24 bg-slate-400 dark:bg-slate-700 rounded-full"></div>
                                     </div>
                                     <p className="text-on-surface-variant text-sm mt-6">Drop any YouTube URL into the intelligent input field.</p>
                                 </div>
@@ -117,7 +117,7 @@ export function LandingPage() {
                             <div className="relative flex flex-col items-center text-center">
                                 <div className="w-16 h-16 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center text-2xl font-black text-secondary mb-8 shadow-xl">2</div>
                                 <div className="glass-card p-6 rounded-3xl w-full">
-                                    <h4 className="text-xl font-bold text-white mb-4">AI Processes</h4>
+                                    <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-4">AI Processes</h4>
                                     <div className="flex justify-center py-2">
                                         <div className="relative w-10 h-10">
                                             <div className="absolute inset-0 border-4 border-secondary/20 rounded-full"></div>
@@ -132,10 +132,10 @@ export function LandingPage() {
                             <div className="relative flex flex-col items-center text-center">
                                 <div className="w-16 h-16 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center text-2xl font-black text-on-surface mb-8 shadow-xl">3</div>
                                 <div className="glass-card p-6 rounded-3xl w-full">
-                                    <h4 className="text-xl font-bold text-white mb-4">Get Notes</h4>
+                                    <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Get Notes</h4>
                                     <div className="space-y-2 text-left px-2">
-                                        <div className="h-1.5 w-full bg-slate-600 rounded-full"></div>
-                                        <div className="h-1.5 w-4/5 bg-slate-600 rounded-full"></div>
+                                        <div className="h-1.5 w-full bg-slate-400 dark:bg-slate-600 rounded-full"></div>
+                                        <div className="h-1.5 w-4/5 bg-slate-400 dark:bg-slate-600 rounded-full"></div>
                                         <div className="h-1.5 w-3/4 bg-primary/40 rounded-full"></div>
                                     </div>
                                     <p className="text-on-surface-variant text-sm mt-6">Receive structured Markdown or a visual mindmap.</p>
@@ -151,7 +151,7 @@ export function LandingPage() {
                         <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-primary/20 rounded-full blur-[100px]"></div>
                         <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-secondary/10 rounded-full blur-[100px]"></div>
 
-                        <h2 className="text-4xl md:text-6xl font-black text-white mb-8 leading-tight">Ready to stop watching and <br />start knowing?</h2>
+                        <h2 className="text-4xl md:text-6xl font-black text-slate-900 dark:text-white mb-8 leading-tight">Ready to stop watching and <br />start knowing?</h2>
                         <p className="text-on-surface-variant text-lg mb-12 max-w-xl mx-auto">Join 10,000+ students, researchers, and creators using TubeToMD to master content faster.</p>
 
                         <Link to="/register" className="inline-block px-12 py-5 bg-gradient-to-br from-primary-container to-primary text-white rounded-3xl font-extrabold text-xl shadow-[0_0_30px_rgba(219,39,119,0.3)] hover:scale-105 transition-all duration-300">
@@ -163,7 +163,7 @@ export function LandingPage() {
             </main>
 
             {/* Footer */}
-            <footer className="bg-slate-950 border-t border-slate-900 w-full pt-20 pb-10">
+            <footer className="bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-900 w-full pt-20 pb-10">
                 <div className="flex flex-col md:flex-row justify-between items-center px-8 max-w-7xl mx-auto gap-10">
                     <div className="flex flex-col items-center md:items-start">
                         <div className="flex items-center gap-2 mb-4">

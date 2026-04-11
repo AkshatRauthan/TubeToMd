@@ -3,7 +3,7 @@ import notesController from '@controllers/notes.controller';
 import { authenticate } from '@middlewares/auth.middleware';
 import { validateBody } from '@middlewares/validate.middleware';
 import { generateNotesSchema, updateNoteSchema } from '@validators/notes.validator';
-import { aiLimiter } from '../../app';
+import { aiLimiter } from '@middlewares/rateLimiter.middleware';
 
 const router = Router();
 

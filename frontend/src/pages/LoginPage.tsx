@@ -57,7 +57,7 @@ export function LoginPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, ease: 'easeOut' }}
-                    className="glass-card border border-[var(--color-outline-variant)]/15 p-8 md:p-10 rounded-[2rem] shadow-2xl overflow-hidden group bg-[#111827]/70"
+                    className="glass-card border border-[var(--color-outline-variant)]/15 p-8 md:p-10 rounded-[2rem] shadow-2xl overflow-hidden group bg-surface-container/70 dark:bg-[#111827]/70"
                 >
                     {/* Header Section */}
                     <div className="mb-10 text-center">
@@ -91,7 +91,7 @@ export function LoginPage() {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
-                                    className="w-full bg-[#111827] border border-[var(--color-outline-variant)]/20 rounded-xl py-4 pl-12 pr-4 text-[var(--color-on-surface)] placeholder:text-[var(--color-outline)]/50 focus:ring-2 focus:ring-[var(--color-primary-container)] focus:border-transparent transition-all outline-none" 
+                                    className="w-full bg-surface dark:bg-[#111827] border border-[var(--color-outline-variant)]/20 rounded-xl py-4 pl-12 pr-4 text-[var(--color-on-surface)] placeholder:text-[var(--color-outline)]/50 focus:ring-2 focus:ring-[var(--color-primary-container)] focus:border-transparent transition-all outline-none" 
                                     placeholder="name@example.com"
                                 />
                             </div>
@@ -114,7 +114,7 @@ export function LoginPage() {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
-                                    className="w-full bg-[#111827] border border-[var(--color-outline-variant)]/20 rounded-xl py-4 pl-12 pr-4 text-[var(--color-on-surface)] placeholder:text-[var(--color-outline)]/50 focus:ring-2 focus:ring-[var(--color-primary-container)] focus:border-transparent transition-all outline-none" 
+                                    className="w-full bg-surface dark:bg-[#111827] border border-[var(--color-outline-variant)]/20 rounded-xl py-4 pl-12 pr-4 text-[var(--color-on-surface)] placeholder:text-[var(--color-outline)]/50 focus:ring-2 focus:ring-[var(--color-primary-container)] focus:border-transparent transition-all outline-none" 
                                     placeholder="••••••••"
                                 />
                             </div>
@@ -142,7 +142,7 @@ export function LoginPage() {
                                 <div className="w-full border-t border-[var(--color-outline-variant)]/10"></div>
                             </div>
                             <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-[#111827] px-4 text-[var(--color-on-surface-variant)] font-bold tracking-tighter">
+                                <span className="bg-surface dark:bg-[#111827] px-4 text-[var(--color-on-surface-variant)] font-bold tracking-tighter">
                                     Or continue with
                                 </span>
                             </div>

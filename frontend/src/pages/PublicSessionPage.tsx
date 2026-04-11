@@ -9,7 +9,7 @@ import {
     Youtube, Video, AlertCircle, ExternalLink, Play, Sparkles,
     ChevronUp,
 } from 'lucide-react';
-import type { Note, NoteType } from '@/types';
+import type { Note } from '@/types';
 import { FlashcardStudyMode } from '@/components/FlashcardStudyMode';
 
 mermaid.initialize({

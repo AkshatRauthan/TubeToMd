@@ -8,10 +8,18 @@ import { AuthCallbackPage } from '@/pages/AuthCallbackPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { SessionPage } from '@/pages/SessionPage';
 import { PublicSessionPage } from '@/pages/PublicSessionPage';
+import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
+import { Toaster } from 'sonner';
 
-function App() {
+function AppContent() {
+    const { theme } = useTheme();
     return (
         <BrowserRouter>
+            <Toaster 
+                position="bottom-right" 
+                richColors 
+                theme={theme as 'light' | 'dark'}
+            />
             <Routes>
                 <Route element={<RootLayout />}>
                     <Route path="/" element={<LandingPage />} />
@@ -29,6 +37,14 @@ function App() {
                 </Route>
             </Routes>
         </BrowserRouter>
+    );
+}
+
+function App() {
+    return (
+        <ThemeProvider>
+            <AppContent />
+        </ThemeProvider>
     );
 }
 

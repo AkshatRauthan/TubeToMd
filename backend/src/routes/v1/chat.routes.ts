@@ -3,7 +3,7 @@ import chatController from '@controllers/chat.controller';
 import { authenticate } from '@middlewares/auth.middleware';
 import { validateBody } from '@middlewares/validate.middleware';
 import { sendChatMessageSchema } from '@validators/chat.validator';
-import { aiLimiter } from '../../app';
+import { aiLimiter } from '@middlewares/rateLimiter.middleware';
 
 const router = Router();
 

@@ -236,7 +236,7 @@ export function DashboardPage() {
                 <div className="absolute w-[400px] h-[400px] bg-[radial-gradient(circle,rgba(219,39,119,0.15)_0%,rgba(219,39,119,0)_70%)] blur-[40px] -z-10 -top-20 -left-20"></div>
                 <div className="absolute w-[400px] h-[400px] bg-[radial-gradient(circle,rgba(219,39,119,0.15)_0%,rgba(219,39,119,0)_70%)] blur-[40px] -z-10 -bottom-20 -right-20"></div>
                 
-                <div className="bg-[#1a1f2f]/60 backdrop-blur-[20px] border border-outline-variant/15 rounded-2xl p-8 md:p-12 shadow-2xl relative overflow-hidden">
+                <div className="bg-surface-container/60 dark:bg-[#1a1f2f]/60 backdrop-blur-[20px] border border-outline-variant/15 rounded-2xl p-8 md:p-12 shadow-2xl relative overflow-hidden">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-10">
                         <div>
                             <h2 className="text-3xl font-bold text-on-primary-container mb-2 font-headline">Create New Session</h2>
@@ -447,7 +447,7 @@ export function DashboardPage() {
                             value={sessionSearch}
                             onChange={e => setSessionSearch(e.target.value)}
                             placeholder="Search sessions by title or URL..."
-                            className="w-full bg-[#1a1f2f]/60 border border-outline-variant/10 rounded-xl py-2.5 pl-10 pr-9 text-sm text-on-surface placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-pink-500/40 transition-all"
+                            className="w-full bg-surface-container/60 dark:bg-[#1a1f2f]/60 border border-outline-variant/10 rounded-xl py-2.5 pl-10 pr-9 text-sm text-on-surface placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-pink-500/40 transition-all"
                         />
                         {sessionSearch && (
                             <button
@@ -468,7 +468,7 @@ export function DashboardPage() {
                         </div>
                     </div>
                 ) : (sessions.length === 0 ? (
-                    <div className="bg-[#1a1f2f]/40 border border-outline-variant/10 rounded-2xl p-16 text-center shadow-lg">
+                    <div className="bg-surface-container/40 dark:bg-[#1a1f2f]/40 border border-outline-variant/10 rounded-2xl p-16 text-center shadow-lg">
                         <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 mx-auto mb-6">
                             <Plus className="h-10 w-10 text-primary" />
                         </div>
@@ -487,7 +487,7 @@ export function DashboardPage() {
 
                     if (filteredSessions.length === 0) {
                         return (
-                            <div className="bg-[#1a1f2f]/40 border border-outline-variant/10 rounded-2xl p-16 text-center shadow-lg">
+                            <div className="bg-surface-container/40 dark:bg-[#1a1f2f]/40 border border-outline-variant/10 rounded-2xl p-16 text-center shadow-lg">
                                 <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-pink-500/10 mx-auto mb-4">
                                     <Search className="h-8 w-8 text-pink-400/50" />
                                 </div>
@@ -517,7 +517,7 @@ export function DashboardPage() {
                                 <motion.div
                                     key={session._id}
                                     layout
-                                    className="bg-[#1a1f2f]/60 backdrop-blur-md border border-outline-variant/10 rounded-xl overflow-hidden hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(219,39,119,0.1)] transition-all duration-300 group cursor-pointer flex flex-col"
+                                    className="bg-surface-container/60 dark:bg-[#1a1f2f]/60 backdrop-blur-md border border-outline-variant/10 rounded-xl overflow-hidden hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(219,39,119,0.1)] transition-all duration-300 group cursor-pointer flex flex-col"
                                     onClick={() => {
                                         if (session.status !== 'failed') navigate(`/session/${session._id}`);
                                     }}

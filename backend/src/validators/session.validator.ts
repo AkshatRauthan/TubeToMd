@@ -1,7 +1,9 @@
 import { z } from 'zod';
 
+const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
+
 export const createYouTubeSessionSchema = z.object({
-    videoUrl: z.string().url('Invalid YouTube URL'),
+    videoUrl: z.string().url('Invalid URL').regex(youtubeRegex, 'Must be a valid YouTube URL'),
     title: z.string().max(200).optional(),
     startTime: z.number().min(0).optional(),
     endTime: z.number().min(0).optional(),

@@ -48,12 +48,12 @@
 ### 4. Dark Mode Toggle
 - **Goal:** Add a theme switcher in the Navbar for user preference.
 - **Tasks:**
-  - [ ] Implement theme context or use Tailwind's `dark` strategy.
-  - [ ] Add toggle icon (Sun/Moon).
-  - [ ] Persist choice to `localStorage`.
-- **Status:** Not Started
+  - [x] Implement theme context or use Tailwind's `dark` strategy.
+  - [x] Add toggle icon (Sun/Moon).
+  - [x] Persist choice to `localStorage`.
+- **Status:** Completed
 - **Comments/Reviews:**
-  - *(Add comments here...)*
+  - *Implemented a global ThemeContext and Sun/Moon toggle in the Navbar. Systematic refactor of hardcoded hex values to support dynamic Nocturne Rose and Lume Light themes.*
 
 ---
 
@@ -95,41 +95,41 @@
 ### 5. Advanced Note Generation UI
 - **Goal:** Enhance the generation form with specific user requests.
 - **Tasks:**
-  - [ ] **Persona Selector:** Dropdown for selecting summary persona before generation.
-  - [ ] **Time Range Notes:** UI slider/inputs for selecting a transcript time range.
-  - [ ] **Topic Focus:** Text input to specify a focus topic for the LLM.
-- **Status:** Not Started
+  - [x] **Persona Selector:** Dropdown for selecting summary persona before generation.
+  - [x] **Time Range Notes:** UI slider/inputs for selecting a transcript time range.
+  - [x] **Topic Focus:** Text input to specify a focus topic for the LLM.
+- **Status:** Completed
 - **Comments/Reviews:**
   - *(Add comments here...)*
 
 ### 6. Interactive Transcript Search
 - **Goal:** Allow users to search for spoken phrases instantly.
 - **Tasks:**
-  - [ ] Add search bar above transcript.
-  - [ ] Implement keyword highlighting of matches within the transcript viewport.
-  - [ ] Add "Next/Previous match" controls.
-- **Status:** Not Started
+  - [x] Add search bar above transcript.
+  - [x] Implement keyword highlighting of matches within the transcript viewport.
+  - [x] Add "Next/Previous match" controls.
+- **Status:** Completed
 - **Comments/Reviews:**
   - *(Add comments here...)*
 
 ### 7. Flashcard Study Mode
 - **Goal:** Interactive study interface based on AI-generated flashcard notes.
 - **Tasks:**
-  - [ ] Create a dedicated flashcard component (flip animations).
-  - [ ] Parse markdown flashcards into structured JSON format on frontend.
-  - [ ] Build quiz/review UI.
-- **Status:** Not Started
+  - [x] Create a dedicated flashcard component (flip animations).
+  - [x] Parse markdown flashcards into structured JSON format on frontend.
+  - [x] Build quiz/review UI.
+- **Status:** Completed
 - **Comments/Reviews:**
   - *(Add comments here...)*
 
 ### 8. Session Management & Search
 - **Goal:** Give users better tools to organize their content.
 - **Tasks:**
-  - [ ] Add global search bar to Dashboard (searches title & transcript content).
-  - [ ] Implement session deletion (trash icon).
-- **Status:** Not Started
+  - [x] Add global search bar to Dashboard (searches title & transcript content).
+  - [x] Implement session deletion (trash icon).
+- **Status:** Completed
 - **Comments/Reviews:**
-  - *(Add comments here...)*
+  - *Session deletion is fully implemented with confirmation dialogs in both Dashboard and Session pages.*
 
 ---
 
@@ -138,21 +138,21 @@
 ### 9. Export & Sharing
 - **Goal:** Allow for more ways to export data.
 - **Tasks:**
-  - [ ] **DOCX Export:** Generate Word documents from Notes.
-  - [ ] **Sharing:** Generate a public link for a read-only Session/Note view.
-  - [ ] **Batch Generation:** Generate multiple note types simultaneously.
-- **Status:** Not Started
+  - [x] **DOCX Export:** Generate Word documents from Notes.
+  - [x] **Sharing:** Generate a public link for a read-only Session/Note view.
+  - [x] **Batch Generation:** Generate multiple note types simultaneously.
+- **Status:** Completed
 - **Comments/Reviews:**
   - *(Add comments here...)*
 
 ### 10. System DevOps & Polish
 - **Goal:** Prepare the application for production deployment.
 - **Tasks:**
-  - [ ] Rate Limiting (Express-rate-limit).
-  - [ ] Input Validation (Zod).
-  - [ ] Dockerfiles & `docker-compose.yml`.
-  - [ ] Unit Tests (Frontend & Backend).
-- **Status:** Not Started
+  - [x] Rate Limiting (Express-rate-limit).
+  - [x] Input Validation (Zod).
+  - [x] Dockerfiles & `docker-compose.yml`.
+  - [x] Unit Tests (Frontend & Backend).
+- **Status:** Completed
 - **Comments/Reviews:**
   - *(Add comments here...)*
 
