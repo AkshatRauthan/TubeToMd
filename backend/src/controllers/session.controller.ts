@@ -279,6 +279,38 @@ class SessionController {
             next(error);
         }
     }
+
+    async shareSession(req: Request, res: Response, next: NextFunction) {
+        try {
+            const userId = req.user!._id;
+            const id = req.params.id as string;
+            const result = await sessionService.generateShareToken(id, userId);
+            new SuccessResponse('Share link generated', result).send(res);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async revokeShare(req: Request, res: Response, next: NextFunction) {
+        try {
+            const userId = req.user!._id;
+            const id = req.params.id as string;
+            await sessionService.revokeShare(id, userId);
+            new SuccessResponse('Sharing revoked').send(res);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async getPublicSession(req: Request, res: Response, next: NextFunction) {
+        try {
+            const shareToken = String(req.params.shareToken);
+            const result = await sessionService.getPublicSession(shareToken);
+            new SuccessResponse('Public session retrieved', result).send(res);
+        } catch (error) {
+            next(error);
+        }
+    }
 }
 
 export default new SessionController();

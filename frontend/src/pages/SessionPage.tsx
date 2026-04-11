@@ -10,11 +10,13 @@ import mermaid from 'mermaid';
 import {
     Loader2, FileText, Brain, GitBranch, MessageSquare, CreditCard,
     BookOpen, Trash2, FolderOpen, ArrowLeft, Sparkles, Languages,
-    RotateCcw, ChevronDown, Copy, Search, Clock, Hash, Type,
-    Youtube, AlertCircle, Download, X,
+    RotateCcw, ChevronDown, ChevronUp, Copy, Search, Clock, Hash, Type,
+    Youtube, AlertCircle, Download, X, Settings2,
     GraduationCap, Edit2, Save, Check, Play,
     StickyNote, Plus, Globe2, FileDown, Eraser,
+    Share2, Link, SquareStack,
 } from 'lucide-react';
+import { FlashcardStudyMode } from '@/components/FlashcardStudyMode';
 
 mermaid.initialize({
     startOnLoad: false,
@@ -63,6 +65,16 @@ const ACTION_BUTTONS: { type: NoteType; label: string; icon: typeof FileText; sp
     { type: 'flowchart', label: 'Flowchart', icon: GitBranch, span: 'half' },
 ];
 
+const PERSONAS = [
+    { value: 'detailed',   label: 'Detailed — Comprehensive coverage' },
+    { value: 'executive',  label: 'Executive — High-level summary' },
+    { value: 'eli5',       label: 'ELI5 — Simple explanations' },
+    { value: 'code-heavy', label: 'Code-Heavy — Focus on code' },
+    { value: 'actionable', label: 'Actionable — Steps & takeaways' },
+    { value: 'academic',   label: 'Academic — Formal & structured' },
+    { value: 'custom',     label: 'Custom — Your own instructions' },
+];
+
 function extractYouTubeId(url: string): string | null {
     const patterns = [
         /(?:v=|\/)([\w-]{11})(?:\?|&|$|\/)/,
@@ -81,6 +93,35 @@ function formatTime(seconds: number) {
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60);
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+function parseTimeInput(t: string): number | undefined {
+    if (!t.trim()) return undefined;
+    const parts = t.split(':').map(Number);
+    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+        return parts[0] * 60 + parts[1];
+    }
+    return undefined;
+}
+
+function renderHighlightedText(text: string, query: string) {
+    if (!query.trim()) return text;
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escaped})`, 'gi');
+    const parts = text.split(regex);
+    return (
+        <>
+            {parts.map((part, i) =>
+                regex.test(part) ? (
+                    <mark key={i} className="bg-yellow-400/30 text-yellow-200 rounded-sm px-0.5 not-italic">
+                        {part}
+                    </mark>
+                ) : (
+                    <span key={i}>{part}</span>
+                )
+            )}
+        </>
+    );
 }
 
 export function SessionPage() {
@@ -133,6 +174,29 @@ export function SessionPage() {
     const [chatInput, setChatInput] = useState('');
     const [chatSending, setChatSending] = useState(false);
     const chatBottomRef = useRef<HTMLDivElement>(null);
+
+    // Advanced note generation options
+    const [selectedPersona, setSelectedPersona] = useState('detailed');
+    const [customPromptText, setCustomPromptText] = useState('');
+    const [topicFocus, setTopicFocus] = useState('');
+    const [noteStartTime, setNoteStartTime] = useState('');
+    const [noteEndTime, setNoteEndTime] = useState('');
+    const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+
+    // Transcript match navigation
+    const [matchIndex, setMatchIndex] = useState(0);
+
+    // Sharing
+    const [sharing, setSharing] = useState(false);
+    const [shareUrl, setShareUrl] = useState('');
+    const [copiedShare, setCopiedShare] = useState(false);
+    const [isShared, setIsShared] = useState(false);
+
+    // Batch generation
+    const [batchSelected, setBatchSelected] = useState<Set<NoteType>>(new Set());
+    const [batchRunning, setBatchRunning] = useState(false);
+    const [batchStatus, setBatchStatus] = useState<Record<string, 'idle' | 'running' | 'done' | 'error'>>({});
+    const [showBatchPanel, setShowBatchPanel] = useState(false);
 
     const youtubeVideoId = useMemo(
         () => (session?.videoUrl ? extractYouTubeId(session.videoUrl) : null),
@@ -233,6 +297,18 @@ export function SessionPage() {
             activeSegmentRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     }, [currentTime, autoScroll]);
+
+    // Reset match index when search query changes
+    useEffect(() => {
+        setMatchIndex(0);
+    }, [searchQuery]);
+
+    // Scroll to active match when matchIndex changes
+    useEffect(() => {
+        if (!searchQuery.trim() || !transcriptContainerRef.current) return;
+        const el = transcriptContainerRef.current.querySelector(`[data-match-idx="${matchIndex}"]`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, [matchIndex, searchQuery]);
 
     // Scroll chat to bottom
     useEffect(() => {
@@ -396,7 +472,11 @@ export function SessionPage() {
         try {
             const res = await api.post<ApiResponse<Note>>(`/notes/session/${id}/generate`, {
                 type,
-                persona: 'detailed',
+                persona: selectedPersona,
+                customPrompt: selectedPersona === 'custom' ? customPromptText : undefined,
+                topic: topicFocus.trim() || undefined,
+                startTimestamp: parseTimeInput(noteStartTime),
+                endTimestamp: parseTimeInput(noteEndTime),
             });
             const newNote = res.data.data;
             console.log(`[Session] Note generated:`, { id: newNote._id, title: newNote.title, type: newNote.type });
@@ -562,6 +642,87 @@ export function SessionPage() {
             const msg = err.response?.data?.message || 'Failed to clear chat';
             toast.error(msg);
         }
+    };
+
+    const handleShareSession = async () => {
+        setSharing(true);
+        try {
+            const res = await api.post<ApiResponse<{ shareToken: string; shareUrl: string }>>(`/sessions/${id}/share`);
+            const { shareUrl: url } = res.data.data;
+            setShareUrl(url);
+            setIsShared(true);
+            await navigator.clipboard.writeText(url);
+            setCopiedShare(true);
+            toast.success('Share link copied to clipboard!');
+            setTimeout(() => setCopiedShare(false), 3000);
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || 'Failed to generate share link');
+        } finally {
+            setSharing(false);
+        }
+    };
+
+    const handleCopyShareUrl = async () => {
+        if (!shareUrl) return;
+        await navigator.clipboard.writeText(shareUrl);
+        setCopiedShare(true);
+        toast.success('Link copied!');
+        setTimeout(() => setCopiedShare(false), 2000);
+    };
+
+    const handleRevokeShare = async () => {
+        if (!confirm('Revoke the public share link? Anyone with the link will lose access.')) return;
+        try {
+            await api.delete(`/sessions/${id}/share`);
+            setIsShared(false);
+            setShareUrl('');
+            toast.success('Share link revoked');
+        } catch (err: any) {
+            toast.error('Failed to revoke share link');
+        }
+    };
+
+    const handleBatchGenerate = async () => {
+        if (batchSelected.size === 0) { toast.error('Select at least one note type'); return; }
+        if (!isReady || !hasTranscript) { toast.error('Session is not ready yet'); return; }
+
+        setBatchRunning(true);
+        const types = Array.from(batchSelected);
+        const statusInit: Record<string, 'idle' | 'running' | 'done' | 'error'> = {};
+        types.forEach(t => { statusInit[t] = 'running'; });
+        setBatchStatus(statusInit);
+
+        const results = await Promise.allSettled(
+            types.map(type =>
+                api.post<ApiResponse<Note>>(`/notes/session/${id}/generate`, {
+                    type,
+                    persona: selectedPersona,
+                    customPrompt: selectedPersona === 'custom' ? customPromptText : undefined,
+                    topic: topicFocus.trim() || undefined,
+                    startTimestamp: parseTimeInput(noteStartTime),
+                    endTimestamp: parseTimeInput(noteEndTime),
+                }).then(res => ({ type, note: res.data.data }))
+            )
+        );
+
+        const newStatuses: Record<string, 'idle' | 'running' | 'done' | 'error'> = {};
+        const newNotes: Note[] = [];
+        results.forEach((result, i) => {
+            const type = types[i];
+            if (result.status === 'fulfilled') {
+                newStatuses[type] = 'done';
+                newNotes.push(result.value.note);
+            } else {
+                newStatuses[type] = 'error';
+            }
+        });
+        setBatchStatus(newStatuses);
+        if (newNotes.length > 0) {
+            setNotes(prev => [...newNotes, ...prev]);
+            setActiveNote(newNotes[0]);
+            toast.success(`Generated ${newNotes.length}/${types.length} notes!`);
+        }
+        setBatchRunning(false);
     };
 
     // ─── Computed ────────────────────────────────────────────────
@@ -734,6 +895,33 @@ export function SessionPage() {
                             </div>
                         )}
                     </div>
+
+                    {/* Share Button */}
+                    <div className="pt-2 border-t border-[hsl(var(--border))]/30">
+                        {!isShared ? (
+                            <button
+                                onClick={handleShareSession}
+                                disabled={sharing || !isReady}
+                                className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/20 text-pink-300 text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                                {sharing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Share2 className="h-3.5 w-3.5" />}
+                                {sharing ? 'Generating link...' : 'Share Session'}
+                            </button>
+                        ) : (
+                            <div className="flex flex-col gap-2">
+                                <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2">
+                                    <Link className="h-3.5 w-3.5 text-emerald-400 flex-shrink-0" />
+                                    <span className="text-xs text-emerald-300 flex-1 truncate font-mono">{shareUrl}</span>
+                                    <button onClick={handleCopyShareUrl} className="p-1 rounded hover:bg-emerald-500/20 transition">
+                                        {copiedShare ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-emerald-400" />}
+                                    </button>
+                                </div>
+                                <button onClick={handleRevokeShare} className="text-xs text-slate-600 hover:text-red-400 transition-colors text-center">
+                                    Revoke link
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Generated Notes (Moved here if any, or we can leave it out. The original had them on the left) */}
@@ -799,15 +987,37 @@ export function SessionPage() {
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 placeholder="Search transcript..."
-                                className="w-full bg-surface-container-highest/50 border-none rounded-lg py-2 pl-9 pr-8 text-sm text-on-surface focus:ring-2 focus:ring-pink-500/50 placeholder-slate-500 transition-all duration-300"
+                                className={`w-full bg-surface-container-highest/50 border-none rounded-lg py-2 pl-9 text-sm text-on-surface focus:ring-2 focus:ring-pink-500/50 placeholder-slate-500 transition-all duration-300 ${searchQuery ? 'pr-28' : 'pr-4'}`}
                             />
                             {searchQuery && (
-                                <button
-                                    onClick={() => setSearchQuery('')}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))] hover:text-white"
-                                >
-                                    <X className="h-3.5 w-3.5" />
-                                </button>
+                                <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+                                    <span className="text-[10px] text-slate-500 font-mono px-1 tabular-nums">
+                                        {filteredTranscript.length > 0 ? `${matchIndex + 1}/${filteredTranscript.length}` : '0/0'}
+                                    </span>
+                                    <button
+                                        onClick={() => setMatchIndex(i => Math.max(0, i - 1))}
+                                        disabled={matchIndex === 0 || filteredTranscript.length === 0}
+                                        className="p-0.5 rounded hover:bg-white/10 disabled:opacity-30 transition"
+                                        title="Previous match"
+                                    >
+                                        <ChevronUp className="h-3.5 w-3.5 text-slate-400" />
+                                    </button>
+                                    <button
+                                        onClick={() => setMatchIndex(i => Math.min(filteredTranscript.length - 1, i + 1))}
+                                        disabled={matchIndex >= filteredTranscript.length - 1 || filteredTranscript.length === 0}
+                                        className="p-0.5 rounded hover:bg-white/10 disabled:opacity-30 transition"
+                                        title="Next match"
+                                    >
+                                        <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                                    </button>
+                                    <button
+                                        onClick={() => setSearchQuery('')}
+                                        className="p-0.5 rounded hover:bg-white/10 text-slate-400 hover:text-white transition"
+                                        title="Clear search"
+                                    >
+                                        <X className="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
                             )}
                         </div>
 
@@ -905,6 +1115,7 @@ export function SessionPage() {
                         <div className="space-y-1">
                             {filteredTranscript.map((seg, idx) => {
                                 const active = isActiveSegment(seg);
+                                const isActiveMatch = !!searchQuery.trim() && idx === matchIndex;
                                 const segAnnotations = annotations.filter(a => 
                                     a.startTimestamp !== undefined && 
                                     Math.abs(a.startTimestamp - seg.start) < 1
@@ -913,20 +1124,23 @@ export function SessionPage() {
                                     <div key={idx} className="group">
                                         <div
                                             ref={active ? activeSegmentRef : undefined}
+                                            data-match-idx={idx}
                                             onClick={() => seekTo(seg.start)}
                                             className={`flex gap-4 p-3 rounded-lg cursor-pointer transition-all duration-200 relative ${
                                                 active
                                                     ? 'bg-pink-500/10 border-l-2 border-pink-500 shadow-[0_0_15px_rgba(219,39,119,0.1)]'
-                                                    : 'hover:bg-white/5 border-l-2 border-transparent'
+                                                    : isActiveMatch
+                                                        ? 'bg-yellow-500/10 border-l-2 border-yellow-500/60 shadow-[0_0_12px_rgba(234,179,8,0.08)]'
+                                                        : 'hover:bg-white/5 border-l-2 border-transparent'
                                             }`}
                                         >
                                             <span className={`flex-shrink-0 font-mono text-sm w-12 pt-0.5 ${
-                                                active ? 'text-[hsl(var(--primary))] font-bold' : 'text-secondary'
+                                                active ? 'text-[hsl(var(--primary))] font-bold' : isActiveMatch ? 'text-yellow-400 font-semibold' : 'text-secondary'
                                             }`}>
                                                 {formatTime(seg.start)}
                                             </span>
                                             <span className={`flex-1 text-sm transition-colors ${active ? 'text-white' : 'text-slate-300 group-hover:text-white'}`}>
-                                                {seg.text}
+                                                {renderHighlightedText(seg.text, searchQuery)}
                                             </span>
                                             
                                             {/* Action buttons on hover */}
@@ -1073,6 +1287,202 @@ export function SessionPage() {
                     )}
                 </div>
 
+                {/* Advanced Note Generation Options */}
+                <div className="bg-surface-container-highest/30 border border-pink-900/20 rounded-xl overflow-hidden">
+                    <button
+                        onClick={() => setShowAdvancedOptions(show => !show)}
+                        className="w-full flex items-center justify-between p-3.5 text-sm font-semibold hover:bg-white/5 transition-colors"
+                    >
+                        <div className="flex items-center gap-2 text-slate-300">
+                            <Settings2 className="h-4 w-4 text-pink-400" />
+                            Advanced Options
+                            {(selectedPersona !== 'detailed' || topicFocus || noteStartTime || noteEndTime) && (
+                                <span className="text-[10px] bg-pink-500/20 text-pink-300 px-1.5 py-0.5 rounded-full font-bold">Active</span>
+                            )}
+                        </div>
+                        <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${showAdvancedOptions ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    <AnimatePresence>
+                        {showAdvancedOptions && (
+                            <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2, ease: 'easeInOut' }}
+                                className="overflow-hidden"
+                            >
+                                <div className="px-4 pb-4 pt-2 border-t border-pink-900/20 space-y-3">
+
+                                    {/* Persona */}
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Persona</label>
+                                        <select
+                                            value={selectedPersona}
+                                            onChange={e => setSelectedPersona(e.target.value)}
+                                            className="w-full bg-surface-container-highest/80 border border-pink-900/20 rounded-lg py-2 px-3 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-pink-500/50 transition"
+                                        >
+                                            {PERSONAS.map(p => (
+                                                <option key={p.value} value={p.value}>{p.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Custom prompt — only shown when persona=custom */}
+                                    {selectedPersona === 'custom' && (
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Custom Instructions</label>
+                                            <textarea
+                                                value={customPromptText}
+                                                onChange={e => setCustomPromptText(e.target.value)}
+                                                placeholder="e.g. Focus only on code examples and technical implementation..."
+                                                rows={3}
+                                                className="w-full bg-surface-container-highest/80 border border-pink-900/20 rounded-lg py-2 px-3 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-pink-500/50 resize-none transition placeholder-slate-600"
+                                            />
+                                        </div>
+                                    )}
+
+                                    {/* Topic Focus */}
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Topic Focus</label>
+                                        <input
+                                            type="text"
+                                            value={topicFocus}
+                                            onChange={e => setTopicFocus(e.target.value)}
+                                            placeholder="e.g. React hooks, neural networks..."
+                                            className="w-full bg-surface-container-highest/80 border border-pink-900/20 rounded-lg py-2 px-3 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-pink-500/50 transition placeholder-slate-600"
+                                        />
+                                    </div>
+
+                                    {/* Time Range */}
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Time Range (MM:SS)</label>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="text"
+                                                value={noteStartTime}
+                                                onChange={e => setNoteStartTime(e.target.value)}
+                                                placeholder="00:00"
+                                                className="flex-1 bg-surface-container-highest/80 border border-pink-900/20 rounded-lg py-2 px-3 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-pink-500/50 font-mono transition placeholder-slate-600"
+                                            />
+                                            <span className="text-slate-600 text-xs font-medium">to</span>
+                                            <input
+                                                type="text"
+                                                value={noteEndTime}
+                                                onChange={e => setNoteEndTime(e.target.value)}
+                                                placeholder="end"
+                                                className="flex-1 bg-surface-container-highest/80 border border-pink-900/20 rounded-lg py-2 px-3 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-pink-500/50 font-mono transition placeholder-slate-600"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Reset link */}
+                                    {(selectedPersona !== 'detailed' || topicFocus || noteStartTime || noteEndTime || customPromptText) && (
+                                        <button
+                                            onClick={() => {
+                                                setSelectedPersona('detailed');
+                                                setCustomPromptText('');
+                                                setTopicFocus('');
+                                                setNoteStartTime('');
+                                                setNoteEndTime('');
+                                            }}
+                                            className="text-xs text-slate-600 hover:text-pink-400 transition-colors"
+                                        >
+                                            ↩ Reset to defaults
+                                        </button>
+                                    )}
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+
+                {/* Batch Generate Panel */}
+                <div className="bg-surface-container-highest/30 border border-pink-900/20 rounded-xl overflow-hidden">
+                    <button
+                        onClick={() => setShowBatchPanel(show => !show)}
+                        className="w-full flex items-center justify-between p-3.5 text-sm font-semibold hover:bg-white/5 transition-colors"
+                    >
+                        <div className="flex items-center gap-2 text-slate-300">
+                            <SquareStack className="h-4 w-4 text-pink-400" />
+                            Batch Generate
+                            {batchSelected.size > 0 && (
+                                <span className="text-[10px] bg-pink-500/20 text-pink-300 px-1.5 py-0.5 rounded-full font-bold">{batchSelected.size} selected</span>
+                            )}
+                        </div>
+                        <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${showBatchPanel ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    <AnimatePresence>
+                        {showBatchPanel && (
+                            <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2, ease: 'easeInOut' }}
+                                className="overflow-hidden"
+                            >
+                                <div className="px-4 pb-4 pt-2 border-t border-pink-900/20 space-y-3">
+                                    <p className="text-xs text-slate-500">Select note types to generate all at once using your current Advanced Options settings.</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {ACTION_BUTTONS.map(({ type, label, icon: Icon }) => {
+                                            const sel = batchSelected.has(type);
+                                            const status = batchStatus[type];
+                                            return (
+                                                <button
+                                                    key={type}
+                                                    onClick={() => {
+                                                        setBatchSelected(prev => {
+                                                            const next = new Set(prev);
+                                                            if (next.has(type)) next.delete(type); else next.add(type);
+                                                            return next;
+                                                        });
+                                                    }}
+                                                    disabled={batchRunning}
+                                                    className={`flex items-center gap-2 p-2.5 rounded-lg border text-xs font-semibold transition-all ${
+                                                        sel
+                                                            ? 'bg-pink-500/15 border-pink-500/40 text-pink-300'
+                                                            : 'bg-white/5 border-white/10 text-slate-400 hover:border-white/20 hover:text-white'
+                                                    } disabled:cursor-not-allowed`}
+                                                >
+                                                    {status === 'running' ? (
+                                                        <Loader2 className="h-3.5 w-3.5 animate-spin text-pink-400" />
+                                                    ) : status === 'done' ? (
+                                                        <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                                    ) : status === 'error' ? (
+                                                        <AlertCircle className="h-3.5 w-3.5 text-red-400" />
+                                                    ) : (
+                                                        <Icon className="h-3.5 w-3.5" />
+                                                    )}
+                                                    {label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={handleBatchGenerate}
+                                            disabled={batchSelected.size === 0 || batchRunning || !isReady || !hasTranscript}
+                                            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-500 hover:to-rose-400 text-white text-sm font-bold shadow-lg hover:shadow-pink-500/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                                        >
+                                            {batchRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                                            {batchRunning ? 'Generating...' : `Generate ${batchSelected.size || 'Selected'}`}
+                                        </button>
+                                        {batchSelected.size > 0 && !batchRunning && (
+                                            <button
+                                                onClick={() => { setBatchSelected(new Set()); setBatchStatus({}); }}
+                                                className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-slate-500 hover:text-white text-xs transition"
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+
                 {/* Download Report */}
                 <button
                     onClick={handleDownloadReport}
@@ -1182,6 +1592,7 @@ function NoteViewerFull({
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(note.content);
     const [isSaving, setIsSaving] = useState(false);
+    const [showStudyMode, setShowStudyMode] = useState(false);
 
     useEffect(() => {
         setEditContent(note.content);
@@ -1236,6 +1647,10 @@ function NoteViewerFull({
 
     return (
         <div className="flex h-[calc(100vh-4rem)] flex-col" ref={containerRef}>
+            {/* Flashcard Study Mode Overlay */}
+            {showStudyMode && (
+                <FlashcardStudyMode note={note} onClose={() => setShowStudyMode(false)} />
+            )}
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))]">
                 <div className="flex items-center gap-3">
@@ -1276,6 +1691,15 @@ function NoteViewerFull({
                         </>
                     ) : (
                         <>
+                            {note.type === 'flashcards' && (
+                                <button
+                                    onClick={() => setShowStudyMode(true)}
+                                    className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs bg-pink-500/20 text-pink-300 border border-pink-500/20 hover:bg-pink-500/30 transition font-semibold"
+                                >
+                                    <GraduationCap className="h-4 w-4" />
+                                    Study Mode
+                                </button>
+                            )}
                             <button
                                 onClick={() => setIsEditing(true)}
                                 className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))]/10 transition"

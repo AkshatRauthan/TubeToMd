@@ -485,6 +485,66 @@ class SessionService {
 
         return updated!;
     }
+
+    // ──────────────────────────────────────────────
+    // Public Sharing
+    // ──────────────────────────────────────────────
+
+    /**
+     * Generate (or return existing) a share token for a session.
+     * Makes the session publicly accessible via /public/:shareToken.
+     */
+    async generateShareToken(sessionId: string, userId: string): Promise<{ shareToken: string; shareUrl: string }> {
+        const session = await Session.findOne({ _id: sessionId, userId });
+        if (!session) {
+            throw new CustomError('Session not found', StatusCodes.NOT_FOUND);
+        }
+
+        // Return existing token if already shared
+        if (session.shareToken && session.isPublic) {
+            const shareUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/share/${session.shareToken}`;
+            return { shareToken: session.shareToken, shareUrl };
+        }
+
+        // Generate a new UUID-style token
+        const { randomUUID } = await import('crypto');
+        const shareToken = randomUUID().replace(/-/g, '');
+
+        await Session.findByIdAndUpdate(sessionId, { shareToken, isPublic: true });
+
+        const shareUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/share/${shareToken}`;
+        return { shareToken, shareUrl };
+    }
+
+    /**
+     * Revoke sharing — clears shareToken and sets isPublic false.
+     */
+    async revokeShare(sessionId: string, userId: string): Promise<void> {
+        const session = await Session.findOne({ _id: sessionId, userId });
+        if (!session) {
+            throw new CustomError('Session not found', StatusCodes.NOT_FOUND);
+        }
+        await Session.findByIdAndUpdate(sessionId, {
+            $unset: { shareToken: 1 },
+            isPublic: false,
+        });
+    }
+
+    /**
+     * Get a publicly shared session by its share token (no auth required).
+     * Returns the session + associated notes.
+     */
+    async getPublicSession(shareToken: string): Promise<{ session: ISession; notes: any[] }> {
+        const session = await Session.findOne({ shareToken, isPublic: true });
+        if (!session) {
+            throw new CustomError('Shared session not found or link has been revoked', StatusCodes.NOT_FOUND);
+        }
+
+        const { Note } = await import('@models');
+        const notes = await Note.find({ sessionId: String(session._id) }).sort({ createdAt: -1 });
+
+        return { session, notes };
+    }
 }
 
 export default new SessionService();

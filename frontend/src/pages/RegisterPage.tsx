@@ -54,7 +54,7 @@ export function RegisterPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, ease: 'easeOut' }}
-                    className="glass-card p-8 md:p-10 rounded-[2rem] border border-[var(--color-outline-variant)]/20 shadow-2xl transition-all duration-500 hover:shadow-pink-500/10 bg-[#111827]/70"
+                    className="glass-card p-8 md:p-10 rounded-[2rem] border border-[var(--color-outline-variant)]/20 shadow-2xl transition-all duration-500 hover:shadow-pink-500/10 bg-surface-container/70 dark:bg-[#111827]/70"
                 >
                     <div className="text-center mb-8">
                         <h1 className="text-3xl font-black tracking-tight text-white mb-2 font-headline">Create account</h1>
@@ -78,7 +78,7 @@ export function RegisterPage() {
                             <div className="relative group">
                                 <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--color-outline)] group-focus-within:text-[var(--color-primary)] transition-colors" />
                                 <input 
-                                    className="w-full bg-[#111827] pl-12 pr-4 py-4 border border-[var(--color-outline-variant)]/30 rounded-xl text-[var(--color-on-surface)] placeholder:text-[var(--color-outline)]/50 focus:ring-2 focus:ring-[var(--color-primary-container)] focus:border-transparent transition-all outline-none" 
+                                    className="w-full bg-surface dark:bg-[#111827] pl-12 pr-4 py-4 border border-[var(--color-outline-variant)]/30 rounded-xl text-[var(--color-on-surface)] placeholder:text-[var(--color-outline)]/50 focus:ring-2 focus:ring-[var(--color-primary-container)] focus:border-transparent transition-all outline-none" 
                                     placeholder="John Doe" 
                                     type="text"
                                     value={name}
@@ -94,7 +94,7 @@ export function RegisterPage() {
                             <div className="relative group">
                                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--color-outline)] group-focus-within:text-[var(--color-primary)] transition-colors" />
                                 <input 
-                                    className="w-full bg-[#111827] pl-12 pr-4 py-4 border border-[var(--color-outline-variant)]/30 rounded-xl text-[var(--color-on-surface)] placeholder:text-[var(--color-outline)]/50 focus:ring-2 focus:ring-[var(--color-primary-container)] focus:border-transparent transition-all outline-none" 
+                                    className="w-full bg-surface dark:bg-[#111827] pl-12 pr-4 py-4 border border-[var(--color-outline-variant)]/30 rounded-xl text-[var(--color-on-surface)] placeholder:text-[var(--color-outline)]/50 focus:ring-2 focus:ring-[var(--color-primary-container)] focus:border-transparent transition-all outline-none" 
                                     placeholder="name@example.com" 
                                     type="email"
                                     value={email}
@@ -110,7 +110,7 @@ export function RegisterPage() {
                             <div className="relative group">
                                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--color-outline)] group-focus-within:text-[var(--color-primary)] transition-colors" />
                                 <input 
-                                    className="w-full bg-[#111827] pl-12 pr-4 py-4 border border-[var(--color-outline-variant)]/30 rounded-xl text-[var(--color-on-surface)] placeholder:text-[var(--color-outline)]/50 focus:ring-2 focus:ring-[var(--color-primary-container)] focus:border-transparent transition-all outline-none" 
+                                    className="w-full bg-surface dark:bg-[#111827] pl-12 pr-4 py-4 border border-[var(--color-outline-variant)]/30 rounded-xl text-[var(--color-on-surface)] placeholder:text-[var(--color-outline)]/50 focus:ring-2 focus:ring-[var(--color-primary-container)] focus:border-transparent transition-all outline-none" 
                                     placeholder="••••••••" 
                                     type="password"
                                     value={password}

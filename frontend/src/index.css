@@ -58,9 +58,77 @@
   --font-label: "Inter", sans-serif;
 }
 
+@custom-variant dark (&:is(.dark *));
+
 @layer base {
-  html {
+  html.dark {
     color-scheme: dark;
+  }
+  html.light {
+    color-scheme: light;
+  }
+
+  :root.light {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 332 80% 51%;
+    --primary-foreground: 332 100% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222 47% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222 47% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+
+    --color-background: #f8fafc;
+    --color-surface: #ffffff;
+    --color-surface-dim: #f1f5f9;
+    --color-surface-container-lowest: #ffffff;
+    --color-surface-container-low: #f8fafc;
+    --color-surface-container: #f1f5f9;
+    --color-surface-container-high: #e2e8f0;
+    --color-surface-container-highest: #cbd5e1;
+    --color-on-surface: #0f172a;
+    --color-on-surface-variant: #334155;
+    --color-primary: #db2777;
+    --color-primary-container: #fbcfe8;
+    --color-on-primary-container: #831843;
+    --color-secondary: #059669;
+    --color-outline: #94a3b8;
+    --color-outline-variant: #e2e8f0;
+    --color-error: #dc2626;
+    --color-error-container: #fee2e2;
+  }
+
+  :root.dark {
+    --background: 222 47% 7%;
+    --foreground: 214 32% 91%;
+    --card: 222 47% 11%;
+    --card-foreground: 214 32% 91%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 214 32% 91%;
+    --primary: 332 80% 51%;
+    --primary-foreground: 332 100% 98%;
+    --secondary: 222 47% 15%;
+    --secondary-foreground: 214 32% 91%;
+    --muted: 222 47% 15%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 222 47% 15%;
+    --accent-foreground: 214 32% 91%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 222 47% 15%;
+    --input: 222 47% 15%;
+    --ring: 216 12% 84%;
   }
   
   body {
@@ -127,6 +195,13 @@
       background: rgba(26, 31, 47, 0.4);
       backdrop-filter: blur(12px);
       border: 1px solid rgba(89, 64, 71, 0.15);
+  }
+  
+  :root.light .glass-card {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
   }
   
   .hero-glow {

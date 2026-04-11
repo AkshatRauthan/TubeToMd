@@ -42,6 +42,8 @@ export interface Session {
     };
     createdAt: string;
     updatedAt: string;
+    shareToken?: string;
+    isPublic?: boolean;
 }
 
 // Note
