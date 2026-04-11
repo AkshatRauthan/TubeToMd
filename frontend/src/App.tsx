@@ -7,6 +7,7 @@ import { RegisterPage } from '@/pages/RegisterPage';
 import { AuthCallbackPage } from '@/pages/AuthCallbackPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { SessionPage } from '@/pages/SessionPage';
+import { PublicSessionPage } from '@/pages/PublicSessionPage';
 
 function App() {
     return (
@@ -17,6 +18,9 @@ function App() {
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<RegisterPage />} />
                     <Route path="/auth/callback" element={<AuthCallbackPage />} />
+                    
+                    {/* Public share route — no authentication required */}
+                    <Route path="/share/:shareToken" element={<PublicSessionPage />} />
 
                     <Route element={<ProtectedRoute />}>
                         <Route path="/dashboard" element={<DashboardPage />} />

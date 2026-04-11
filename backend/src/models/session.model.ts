@@ -30,6 +30,8 @@ export interface ISession extends Document {
         start: number;
         end: number;
     };
+    shareToken?: string;
+    isPublic?: boolean;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -88,6 +90,8 @@ const sessionSchema = new Schema<ISession>(
             start: { type: Number },
             end: { type: Number },
         },
+        shareToken: { type: String, sparse: true, index: true },
+        isPublic: { type: Boolean, default: false },
     },
     {
         timestamps: true,

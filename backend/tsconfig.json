@@ -38,7 +38,10 @@
             "@errors": ["utils/errors"],
             "@errors/*": ["utils/errors/*"],
             "@common": ["utils/common"],
-            "@common/*": ["utils/common/*"]
+            "@common/*": ["utils/common/*"],
+
+            "@validators": ["validators"],
+            "@validators/*": ["validators/*"]
         }
     },
     "include": ["./src/**/*"],

@@ -19,7 +19,8 @@ import {
     Sparkles,
     Download,
     Link as LinkIcon,
-    ChevronRight
+    ChevronRight,
+    Search
 } from 'lucide-react';
 
 const POLL_INTERVAL = 4000;
@@ -31,6 +32,7 @@ export function DashboardPage() {
     const [creating, setCreating] = useState(false);
     const [error, setError] = useState('');
     const [inputType, setInputType] = useState<'youtube' | 'upload'>('youtube');
+    const [sessionSearch, setSessionSearch] = useState('');
     const navigate = useNavigate();
 
     const { state: uploadState, processVideo, reset: resetUpload, abort: abortUpload } =
@@ -436,6 +438,28 @@ export function DashboardPage() {
                     )}
                 </div>
 
+                {/* Session search bar */}
+                {!loading && sessions.length > 0 && (
+                    <div className="relative mb-6">
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+                        <input
+                            type="text"
+                            value={sessionSearch}
+                            onChange={e => setSessionSearch(e.target.value)}
+                            placeholder="Search sessions by title or URL..."
+                            className="w-full bg-[#1a1f2f]/60 border border-outline-variant/10 rounded-xl py-2.5 pl-10 pr-9 text-sm text-on-surface placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-pink-500/40 transition-all"
+                        />
+                        {sessionSearch && (
+                            <button
+                                onClick={() => setSessionSearch('')}
+                                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition"
+                            >
+                                <X className="h-3.5 w-3.5" />
+                            </button>
+                        )}
+                    </div>
+                )}
+
                 {loading ? (
                     <div className="flex justify-center py-20">
                         <div className="flex flex-col items-center gap-4">
@@ -443,7 +467,7 @@ export function DashboardPage() {
                             <span className="text-on-surface-variant font-label">Loading your intelligence library...</span>
                         </div>
                     </div>
-                ) : sessions.length === 0 ? (
+                ) : (sessions.length === 0 ? (
                     <div className="bg-[#1a1f2f]/40 border border-outline-variant/10 rounded-2xl p-16 text-center shadow-lg">
                         <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 mx-auto mb-6">
                             <Plus className="h-10 w-10 text-primary" />
@@ -453,9 +477,37 @@ export function DashboardPage() {
                             Create your first session above by pasting a YouTube link or uploading a video.
                         </p>
                     </div>
-                ) : (
+                ) : (() => {
+                    const filteredSessions = sessionSearch.trim()
+                        ? sessions.filter(s =>
+                            s.title.toLowerCase().includes(sessionSearch.toLowerCase()) ||
+                            (s.videoUrl || '').toLowerCase().includes(sessionSearch.toLowerCase())
+                          )
+                        : sessions;
+
+                    if (filteredSessions.length === 0) {
+                        return (
+                            <div className="bg-[#1a1f2f]/40 border border-outline-variant/10 rounded-2xl p-16 text-center shadow-lg">
+                                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-pink-500/10 mx-auto mb-4">
+                                    <Search className="h-8 w-8 text-pink-400/50" />
+                                </div>
+                                <h4 className="text-lg font-bold text-on-surface mb-2">No sessions match</h4>
+                                <p className="text-on-surface-variant text-sm">
+                                    No sessions found for <span className="text-pink-400 font-medium">&ldquo;{sessionSearch}&rdquo;</span>.
+                                </p>
+                                <button
+                                    onClick={() => setSessionSearch('')}
+                                    className="mt-4 text-sm text-slate-500 hover:text-pink-400 transition-colors"
+                                >
+                                    Clear search
+                                </button>
+                            </div>
+                        );
+                    }
+
+                    return (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {sessions.map((session) => {
+                        {filteredSessions.map((session) => {
                             const status = statusConfig(session.status);
                             const videoId = extractYouTubeId(session.videoUrl);
                             const thumbnailUrl = session.thumbnailUrl || 
@@ -556,6 +608,8 @@ export function DashboardPage() {
                             );
                         })}
                     </div>
+                    );
+                })()
                 )}
             </motion.section>
         </main>
