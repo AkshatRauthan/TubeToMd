@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
 # Copy source code
 COPY . .
@@ -19,7 +19,7 @@ WORKDIR /app
 
 # Copy only package files and install production dependencies
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm install --production
 
 # Copy built code from builder
 COPY --from=builder /app/dist ./dist
@@ -28,4 +28,4 @@ COPY --from=builder /app/dist ./dist
 EXPOSE 3000
 
 # Start command
-CMD ["node", "-r", "tsconfig-paths/register", "dist/server.js"]
+CMD ["node", "dist/index.js"]
