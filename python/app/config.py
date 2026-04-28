@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str = ""
     MAX_FILE_SIZE_MB: int = 500
     UPLOAD_DIR: str = "./uploads"
+    WHISPER_MODEL: str = "whisper-large-v3-turbo"
 
     class Config:
         env_file = ".env"

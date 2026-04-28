@@ -1,15 +1,4 @@
-version: '3.8'
-
 services:
-  mongodb:
-    image: mongo:latest
-    container_name: tubetomd_mongodb
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_data:/data/db
-    restart: always
-
   python:
     build:
       context: ./python
@@ -33,18 +22,13 @@ services:
       - "3000:3000"
     environment:
       - PORT=3000
-      - MONGODB_URI=mongodb://mongodb:27017/tubetomd
+      - MONGODB_URI=${MONGODB_URI}
       - JWT_SECRET=${JWT_SECRET}
       - PYTHON_SERVICE_URL=http://python:8000
       - GROQ_API_KEY=${GROQ_API_KEY}
     depends_on:
-      - mongodb
       - python
     restart: always
-    # Enable mapping local volumes for dev optionally
-    # volumes:
-    #   - ./backend:/app
-    #   - /app/node_modules
 
   frontend:
     build:
@@ -56,6 +40,3 @@ services:
     depends_on:
       - backend
     restart: always
-
-volumes:
-  mongodb_data:
