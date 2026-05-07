@@ -1,6 +1,6 @@
 import ChatMessage, { IChatMessage } from '@models/chatMessage.model';
 import Session from '@models/session.model';
-import groqService from '@services/groq.service';
+import nimService from '@services/nim.service';
 import embeddingService from '@services/embedding.service';
 import CustomError from '@errors/custom.error';
 import { StatusCodes } from 'http-status-codes';
@@ -52,8 +52,8 @@ class ChatService {
             content: msg.content,
         }));
 
-        // Generate answer using Groq with RAG context
-        const { answer, sources } = await groqService.answerQuestion(
+        // Generate answer with RAG context
+        const { answer, sources } = await nimService.answerQuestion(
             message,
             relevantChunks,
             historyForPrompt,

@@ -50,6 +50,18 @@ class NotesController {
         }
     }
 
+    async generateNoteImage(req: Request, res: Response, next: NextFunction) {
+        try {
+            const userId = req.user!._id;
+            const id = req.params.id as string;
+            const { prompt } = req.body || {};
+            const note = await notesService.generateNoteImage(id, userId, prompt);
+            new SuccessResponse('Image generated', note, StatusCodes.CREATED).send(res);
+        } catch (error) {
+            next(error);
+        }
+    }
+
     async deleteNote(req: Request, res: Response, next: NextFunction) {
         try {
             const userId = req.user!._id;

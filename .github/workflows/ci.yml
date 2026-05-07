@@ -43,7 +43,8 @@ jobs:
           NODE_ENV: test
           JWT_SECRET: ci-test-secret
           MONGODB_URI: mongodb://localhost:27017/test
-          GROQ_API_KEY: gsk_test_key_placeholder
+          NVIDIA_API_KEY: nvapi-test-key-placeholder
+          ADMIN_API_TOKEN: ci-admin-token
 
   frontend-tests:
     runs-on: ubuntu-latest

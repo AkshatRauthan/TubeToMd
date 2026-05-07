@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import groqKeyManager from '@services/groqKeyManager.service';
+import nimKeyManager from '@services/nimKeyManager.service';
 import serverConfig from '@config/server.config';
 
 const router = Router();
@@ -37,24 +37,23 @@ function adminAuth(req: Request, res: Response, next: NextFunction) {
     next();
 }
 
-// All admin routes require the special bearer token
 router.use(adminAuth);
 
 /**
- * GET /api/v1/admin/groq-keys
- * Get status of all configured API keys.
+ * GET /api/v1/admin/nim-keys
+ * Get status of all configured NVIDIA NIM API keys.
  */
-router.get('/groq-keys', (_req: Request, res: Response) => {
-    const status = groqKeyManager.getStatus();
-    res.json({ success: true, message: 'Key pool status', data: status });
+router.get('/nim-keys', (_req: Request, res: Response) => {
+    const status = nimKeyManager.getStatus();
+    res.json({ success: true, message: 'NIM key pool status', data: status });
 });
 
 /**
- * POST /api/v1/admin/groq-keys
- * Add a new API key to the pool.
+ * POST /api/v1/admin/nim-keys
+ * Add a new NIM API key to the pool.
  * Body: { key: string, label?: string }
  */
-router.post('/groq-keys', (req: Request, res: Response) => {
+router.post('/nim-keys', (req: Request, res: Response) => {
     const { key, label } = req.body;
 
     if (!key || typeof key !== 'string' || key.trim().length < 10) {
@@ -64,7 +63,7 @@ router.post('/groq-keys', (req: Request, res: Response) => {
         });
     }
 
-    const added = groqKeyManager.addKey(key.trim(), label);
+    const added = nimKeyManager.addKey(key.trim(), label);
 
     if (!added) {
         return res.status(409).json({
@@ -73,7 +72,7 @@ router.post('/groq-keys', (req: Request, res: Response) => {
         });
     }
 
-    const status = groqKeyManager.getStatus();
+    const status = nimKeyManager.getStatus();
     res.status(201).json({
         success: true,
         message: 'Key added to pool.',
@@ -82,11 +81,11 @@ router.post('/groq-keys', (req: Request, res: Response) => {
 });
 
 /**
- * DELETE /api/v1/admin/groq-keys
+ * DELETE /api/v1/admin/nim-keys
  * Remove an API key from the pool.
  * Body: { key: string }
  */
-router.delete('/groq-keys', (req: Request, res: Response) => {
+router.delete('/nim-keys', (req: Request, res: Response) => {
     const { key } = req.body;
 
     if (!key || typeof key !== 'string') {
@@ -96,7 +95,7 @@ router.delete('/groq-keys', (req: Request, res: Response) => {
         });
     }
 
-    const removed = groqKeyManager.removeKey(key.trim());
+    const removed = nimKeyManager.removeKey(key.trim());
 
     if (!removed) {
         return res.status(404).json({
@@ -105,7 +104,7 @@ router.delete('/groq-keys', (req: Request, res: Response) => {
         });
     }
 
-    const status = groqKeyManager.getStatus();
+    const status = nimKeyManager.getStatus();
     res.json({
         success: true,
         message: 'Key removed from pool.',

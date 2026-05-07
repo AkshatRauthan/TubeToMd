@@ -18,5 +18,6 @@ router.get('/:id', notesController.getNote);
 router.put('/:id', validateBody(updateNoteSchema), notesController.updateNote);
 router.delete('/:id', notesController.deleteNote);
 router.get('/:id/export', notesController.exportNote);
+router.post('/:id/image', aiLimiter, notesController.generateNoteImage);
 
 export default router;

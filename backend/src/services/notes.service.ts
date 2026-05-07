@@ -1,6 +1,7 @@
 import Note, { INote } from '@models/note.model';
 import Session from '@models/session.model';
-import groqService from '@services/groq.service';
+import nimService from '@services/nim.service';
+import imageService from '@services/image.service';
 import CustomError from '@errors/custom.error';
 import { StatusCodes } from 'http-status-codes';
 import { GenerateNotesRequest, UpdateNoteRequest } from '@types';
@@ -26,7 +27,7 @@ class NotesService {
             );
         }
 
-        const result = await groqService.generateNotes(
+        const result = await nimService.generateNotes(
             session.transcription,
             request.type,
             {
@@ -99,6 +100,31 @@ class NotesService {
             note.isEdited = true;
         }
 
+        await note.save();
+        return note;
+    }
+
+    /**
+     * Generate a cover image for a note using NVIDIA NIM image models.
+     * Saves the image to disk and stores the URL on the note.
+     */
+    async generateNoteImage(
+        noteId: string,
+        userId: string,
+        customPrompt?: string
+    ): Promise<INote> {
+        const note = await Note.findOne({ _id: noteId, userId });
+        if (!note) {
+            throw new CustomError('Note not found', StatusCodes.NOT_FOUND);
+        }
+
+        const prompt = customPrompt?.trim()
+            ? customPrompt.trim()
+            : imageService.buildCoverPrompt(note.title, note.content);
+
+        const result = await imageService.generate(userId, { prompt, aspectRatio: '16:9' });
+
+        note.imageUrl = result.relativeUrl;
         await note.save();
         return note;
     }

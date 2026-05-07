@@ -1,7 +1,10 @@
 # TubeToMD — Architecture & Technical Design
 
-> **Last Updated:** March 2026
+> **Last Updated:** May 2026
 > **Author:** Akshat Rauthan
+
+> ### Migration Notice (May 2026)
+> The LLM stack migrated from **Groq → NVIDIA NIM** (`build.nvidia.com`). All chat / notes / translation calls now use NIM's OpenAI-compatible endpoint. Image generation was added (FLUX.1-schnell, SD3-medium fallback). Whisper transcription is still served by Groq (separate concern, not migrated). Wherever this document still references "Groq" for LLM features, mentally substitute "NVIDIA NIM" — the architectural roles are identical, only the provider and model names changed (see §3 AI/ML and §6a). The new key manager (`NimKeyManager`) additionally tracks per-key *credit exhaustion* (NIM credits are lifetime, not refilled) and supports **fallback-model-before-rotate**, plus a Mongo-backed LLM response cache.
 
 ---
 
@@ -25,11 +28,15 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
                                ┌──────────┼──────────┐
                                │          │          │
                         ┌──────▼───┐ ┌────▼─────┐ ┌──▼──────────┐
-                        │ MongoDB  │ │ Groq AI  │ │ Google      │
-                        │ Atlas    │ │ (LLM +   │ │ OAuth       │
-                        │ (Vector  │ │ Whisper) │ │ Provider    │
-                        │  Search) │ │          │ │             │
+                        │ MongoDB  │ │ NVIDIA   │ │ Google      │
+                        │ Atlas    │ │ NIM      │ │ OAuth       │
+                        │ (Vector  │ │ (LLM +   │ │ Provider    │
+                        │ + Cache) │ │ Image)   │ │             │
                         └──────────┘ └──────────┘ └─────────────┘
+                                          │
+                                   ┌──────▼─────┐
+                                   │ Groq Whisper│  (transcription only)
+                                   └─────────────┘
 ```
 
 ### Service Responsibilities
@@ -66,7 +73,8 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
 - **jsonwebtoken** — JWT auth (access + refresh tokens)
 - **bcryptjs** — password hashing
 - **multer** — audio chunk uploads (no video storage on backend)
-- **groq-sdk** — Groq API client (with key rotation pool)
+- **openai** SDK — used in OpenAI-compatible mode against NVIDIA NIM (`https://integrate.api.nvidia.com/v1`); custom `NimKeyManager` wraps it with rotation pool, fallback-model chain, and credit-exhaustion tracking
+- **axios** — direct calls to NIM image-generation REST endpoint (`https://ai.api.nvidia.com/v1/genai/...`) for FLUX/SD3 (non-OpenAI-shaped)
 - **pdfkit** — PDF report generation (title page, TOC, notes, transcript)
 - **node-cron** — scheduled cleanup tasks
 - **luxon** — date/time formatting
@@ -86,11 +94,15 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
 - **MongoDB Atlas Vector Search** — embeddings for RAG Q&A
 
 ### AI/ML
-- **Groq Llama 3.3 70B** (`llama-3.3-70b-versatile`) — text generation (summaries, Q&A, notes) — 1,000 RPD
-- **Groq Llama 3.1 8B** (`llama-3.1-8b-instant`) — translation — 14,400 RPD
-- **Groq Whisper** (`whisper-large-v3-turbo`) — speech-to-text transcription via API
+- **NVIDIA NIM Llama 3.3 70B** (`meta/llama-3.3-70b-instruct`) — quality-tier LLM for notes, chat Q&A
+- **NVIDIA NIM Nemotron 70B** (`nvidia/llama-3.1-nemotron-70b-instruct`) — quality-tier fallback (NVIDIA-hosted, very stable uptime)
+- **NVIDIA NIM Llama 3.1 8B** (`meta/llama-3.1-8b-instruct`) — fast/bulk LLM for translation, mindmap/flowchart generation
+- **NVIDIA NIM Mistral Small 24B** (`mistralai/mistral-small-24b-instruct`) — fast-tier fallback
+- **NVIDIA NIM FLUX.1-schnell** (`black-forest-labs/flux.1-schnell`) — image generation primary (4-step distilled, ~1s, low credit cost)
+- **NVIDIA NIM Stable Diffusion 3 Medium** (`stabilityai/stable-diffusion-3-medium`) — image-gen fallback
+- **Groq Whisper** (`whisper-large-v3-turbo`) — speech-to-text transcription (kept on Groq; not migrated to NIM)
 - **Local hash-based embeddings** — 384-dim vector embeddings for RAG (zero API calls)
-- **Groq Key Rotation** — circular queue of N keys with auto-exhaustion tracking and background reactivation
+- **NIM Key Rotation** — round-robin pool with rate-limit cooldown + permanent credit-exhaustion tracking, fallback-model-before-rotate, Mongo-backed TTL response cache
 
 ---
 
@@ -282,9 +294,9 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
 ### 5.6 Admin Routes (`/api/v1/admin`) — Protected by `ADMIN_API_TOKEN` bearer auth
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/groq-keys` | Get status of all API keys (masked keys, active/exhausted counts, refill times) |
-| POST | `/groq-keys` | Add a new Groq API key to the rotation pool (`{ key, label? }`) |
-| DELETE | `/groq-keys` | Remove a key from the pool (`{ key }`) |
+| GET | `/nim-keys` | Get status of all NIM API keys (masked keys, active / rate-limited / credit-exhausted counts, refill times) |
+| POST | `/nim-keys` | Add a new NVIDIA NIM API key to the rotation pool (`{ key, label? }`) |
+| DELETE | `/nim-keys` | Remove a key from the pool (`{ key }`) |
 
 ### 5.7 Python FastAPI Endpoints (`http://localhost:8000`)
 | Method | Endpoint | Description |
@@ -454,8 +466,10 @@ JWT_REFRESH_EXPIRY=7d
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 GOOGLE_CALLBACK_URL=http://localhost:5000/api/v1/auth/google/callback
-GROQ_API_KEY=your_primary_groq_api_key
-GROQ_API_KEYS=key1,key2,key3              # Optional: additional keys for rotation pool
+NVIDIA_API_KEY=your_primary_nvidia_nim_key
+NVIDIA_API_KEYS=key1,key2,key3              # Optional: additional keys for rotation pool
+GROQ_API_KEY=your_groq_key                 # Required only for Whisper transcription
+IMAGE_GEN_DAILY_QUOTA_PER_USER=5           # Per-user daily image gen cap (0 = disabled)
 ADMIN_API_TOKEN=your_admin_secret_token     # Bearer token for /api/v1/admin/* endpoints
 PYTHON_SERVICE_URL=http://localhost:8000
 FRONTEND_URL=http://localhost:5173
@@ -534,7 +548,10 @@ backend/
 │   │   ├── notes.service.ts
 │   │   ├── chat.service.ts
 │   │   ├── embedding.service.ts     # Local hash-based embeddings (zero API calls)
-│   │   ├── groq.service.ts          # LLM calls with smart model routing (70B/8B)
+│   │   ├── nim.service.ts           # NVIDIA NIM LLM calls + model fallback chain (70B/8B)
+│   │   ├── nimKeyManager.service.ts # NIM key pool (rate-limit + credit tracking)
+│   │   ├── image.service.ts         # NIM image gen (FLUX / SD3) + per-user quota
+│   │   ├── llmCache.service.ts      # Mongo-backed TTL LLM response cache
 │   │   ├── groqKeyManager.service.ts  # Circular queue key rotation singleton
 │   │   ├── report.service.ts        # PDF report generation (pdfkit)
 │   │   ├── export.service.ts

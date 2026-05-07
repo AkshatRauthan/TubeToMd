@@ -2,7 +2,7 @@
 
 > **Turn any YouTube video or uploaded video into structured AI-powered study notes, mind maps, flashcards, and more.**
 
-TubeToMD extracts transcripts from YouTube videos (or user-uploaded videos via browser-side FFmpeg), then leverages **Groq AI (Llama 3.3 70B)** to generate rich Markdown study materials — summaries, detailed notes, mind maps, flowcharts, flashcards, and study guides. It also provides a **RAG-based Q&A chat**, transcript **translation** (20 languages), **timestamp annotations**, and **PDF report downloads**.
+TubeToMD extracts transcripts from YouTube videos (or user-uploaded videos via browser-side FFmpeg), then leverages **NVIDIA NIM (Llama 3.3 70B)** to generate rich Markdown study materials — summaries, detailed notes, mind maps, flowcharts, flashcards, and study guides. It also provides a **RAG-based Q&A chat**, transcript **translation** (20 languages), **AI-generated cover images** (FLUX.1-schnell), **timestamp annotations**, and **PDF report downloads**.
 
 ---
 
@@ -13,7 +13,8 @@ TubeToMD extracts transcripts from YouTube videos (or user-uploaded videos via b
 - **AI Note Generation** — 6 note types: Summary, Detailed Notes, Mind Map, Flowchart, Flashcards, Study Guide
 - **7 Summary Personas** — Detailed, Executive, ELI5, Code-Heavy, Actionable, Academic, Custom
 - **RAG-Powered Chat** — Ask questions about the video; answers cite specific timestamps via MongoDB Atlas Vector Search
-- **Transcript Translation** — Translate transcripts into 20 languages using Groq AI (Llama 3.1 8B)
+- **Transcript Translation** — Translate transcripts into 20 languages using NVIDIA NIM (Llama 3.1 8B)
+- **AI Cover Image Generation** — Generate cover illustrations per note via NVIDIA NIM FLUX.1-schnell (with SD3-medium fallback)
 - **Mermaid Diagram Rendering** — Mind maps and flowcharts rendered as interactive Mermaid.js diagrams
 - **Timestamp Annotations** — Add notes at specific timestamps; hover-to-annotate on transcript lines
 - **Video-Transcript Sync** — Active transcript line highlights as the video plays (250ms polling)
@@ -21,8 +22,8 @@ TubeToMD extracts transcripts from YouTube videos (or user-uploaded videos via b
 - **Session Deduplication** — Re-opening the same YouTube URL navigates to the existing session
 - **Dashboard with Thumbnails** — Grid tile layout with YouTube thumbnails, duration badges, and status indicators
 - **PDF Report Download** — Comprehensive PDF with title page, TOC, all notes, annotations, and full transcript
-- **Groq API Key Rotation** — Circular queue of N API keys with auto-exhaustion tracking and background reactivation
-- **Admin Key Management** — Protected REST endpoints to add/remove/monitor Groq API keys at runtime
+- **NVIDIA NIM Key Rotation** — Circular queue of N API keys with rate-limit cooldown + credit-exhaustion tracking, fallback-model-before-rotate, and Mongo-backed response cache
+- **Admin Key Management** — Protected REST endpoints to add/remove/monitor NIM API keys at runtime
 - **JWT Auth + Google OAuth** — Email/password registration with optional Google account linking
 
 ---
@@ -32,10 +33,11 @@ TubeToMD extracts transcripts from YouTube videos (or user-uploaded videos via b
 | Layer | Technology |
 |-------|-----------||
 | **Frontend** | React 19 · TypeScript · Vite 7 · TailwindCSS v4 · Zustand · TanStack Query · Framer Motion · Mermaid.js |
-| **Backend** | Express 5 · TypeScript · Mongoose 8 · JWT · pdfkit · groq-sdk |
+| **Backend** | Express 5 · TypeScript · Mongoose 8 · JWT · pdfkit · openai SDK (NIM-compatible) |
 | **Transcription** | Python FastAPI · Groq Whisper API (`whisper-large-v3-turbo`) · youtube-transcript-api |
-| **Database** | MongoDB Atlas (with Atlas Vector Search for RAG) |
-| **AI** | Groq Llama 3.3 70B (notes, chat) · Groq Llama 3.1 8B (translation) · Local hash-based embeddings |
+| **Database** | MongoDB Atlas (with Atlas Vector Search for RAG, TTL-based LLM cache) |
+| **AI (LLM)** | NVIDIA NIM — Llama 3.3 70B (notes, chat) · Llama 3.1 8B (translation) · Nemotron 70B / Mistral Small 24B fallbacks |
+| **AI (Image)** | NVIDIA NIM — FLUX.1-schnell (primary) · Stable Diffusion 3 Medium (fallback) |
 
 ---
 
@@ -51,10 +53,10 @@ TubeToMD extracts transcripts from YouTube videos (or user-uploaded videos via b
                               ┌──────────┼──────────┐
                               │          │          │
                        ┌──────▼───┐ ┌────▼─────┐ ┌──▼──────────┐
-                       │ MongoDB  │ │ Groq AI  │ │ Google      │
-                       │ Atlas    │ │ (Key     │ │ OAuth       │
-                       │ (Vector  │ │ Rotation │ │ Provider    │
-                       │  Search) │ │  Pool)   │ │             │
+                       │ MongoDB  │ │ NVIDIA   │ │ Google      │
+                       │ Atlas    │ │ NIM      │ │ OAuth       │
+                       │ (Vector  │ │ (LLM +   │ │ Provider    │
+                       │  + Cache)│ │  Image)  │ │             │
                        └──────────┘ └──────────┘ └─────────────┘
 ```
 
@@ -68,7 +70,8 @@ TubeToMD extracts transcripts from YouTube videos (or user-uploaded videos via b
 - **Python** ≥ 3.9
 - **MongoDB** (Atlas recommended for Vector Search)
 - **FFmpeg** installed on your system (for audio processing)
-- A **Groq API key** — get one free at [console.groq.com/keys](https://console.groq.com/keys)
+- An **NVIDIA NIM API key** — get one free at [build.nvidia.com](https://build.nvidia.com) (mobile OTP verification required, ~1000 free credits per key; 2–3 keys recommended for rotation)
+- A **Groq API key** — *only required if using Whisper transcription for uploaded videos*; get free at [console.groq.com/keys](https://console.groq.com/keys)
 
 ### 1. Clone the Repository
 
@@ -115,8 +118,12 @@ npm run dev                 # Starts on http://localhost:5173
 | `MONGODB_URI` | MongoDB connection string |
 | `JWT_SECRET` | Secret for JWT access tokens |
 | `JWT_REFRESH_SECRET` | Secret for JWT refresh tokens |
-| `GROQ_API_KEY` | Primary Groq API key |
-| `GROQ_API_KEYS` | Comma-separated list of additional Groq keys for rotation |
+| `NVIDIA_API_KEY` | Primary NVIDIA NIM API key |
+| `NVIDIA_API_KEYS` | Comma-separated list of additional NIM keys for rotation pool |
+| `NVIDIA_MODEL_QUALITY` | LLM for notes/chat (default `meta/llama-3.3-70b-instruct`) |
+| `NVIDIA_MODEL_FAST` | LLM for translation/structured (default `meta/llama-3.1-8b-instruct`) |
+| `NVIDIA_MODEL_IMAGE` | Image gen model (default `black-forest-labs/flux.1-schnell`) |
+| `IMAGE_GEN_DAILY_QUOTA_PER_USER` | Per-user daily image cap (default `5`, `0` to disable) |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
 | `PYTHON_SERVICE_URL` | URL of the Python service (default: `http://localhost:8000`) |
@@ -172,6 +179,7 @@ npm run dev                 # Starts on http://localhost:5173
 | PUT | `/:noteId` | Edit note |
 | DELETE | `/:noteId` | Delete note |
 | GET | `/:noteId/export` | Export as Markdown/HTML |
+| POST | `/:noteId/image` | Generate AI cover image (NIM FLUX.1-schnell) |
 
 ### Chat (`/api/v1/chat`)
 | Method | Endpoint | Description |
@@ -191,9 +199,9 @@ npm run dev                 # Starts on http://localhost:5173
 ### Admin (`/api/v1/admin`) — requires `Authorization: Bearer <ADMIN_API_TOKEN>`
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/groq-keys` | Get status of all API keys in pool |
-| POST | `/groq-keys` | Add a new key to rotation pool |
-| DELETE | `/groq-keys` | Remove a key from pool |
+| GET | `/nim-keys` | Get status of all NIM API keys in pool |
+| POST | `/nim-keys` | Add a new key to rotation pool |
+| DELETE | `/nim-keys` | Remove a key from pool |
 
 ---
 
@@ -210,8 +218,10 @@ TubeToMD/
 │   │   ├── repositories/     # Data access layer
 │   │   ├── routes/v1/        # REST routes + Admin routes
 │   │   ├── services/         # Business logic
-│   │   │   ├── groq.service.ts             # LLM calls with smart model routing
-│   │   │   ├── groqKeyManager.service.ts   # Circular key queue manager
+│   │   │   ├── nim.service.ts              # NVIDIA NIM LLM calls + model fallback chain
+│   │   │   ├── nimKeyManager.service.ts    # NIM key pool manager (rate-limit + credit tracking)
+│   │   │   ├── image.service.ts            # NIM image generation (FLUX / SD3) + per-user quota
+│   │   │   ├── llmCache.service.ts         # Mongo-backed TTL response cache
 │   │   │   ├── embedding.service.ts        # Local hash-based embeddings
 │   │   │   ├── report.service.ts           # PDF report generation
 │   │   │   ├── session.service.ts          # Session CRUD + dedup
@@ -258,12 +268,14 @@ TubeToMD/
 4. Each chunk forwarded to Python/Groq Whisper API for transcription
 5. Backend merges all chunks, generates embeddings → session ready
 
-### Groq Key Rotation
-1. Keys loaded from `GROQ_API_KEY` + `GROQ_API_KEYS` env vars on startup
-2. Each LLM call picks the next key via round-robin
-3. On 429/quota error: key marked exhausted with parsed refill timer
-4. Background timer (10s interval) reactivates keys once refill window elapses
-5. Admin can add/remove keys at runtime via `/api/v1/admin/groq-keys`
+### NVIDIA NIM Key Rotation
+1. Keys loaded from `NVIDIA_API_KEY` + `NVIDIA_API_KEYS` env vars on startup
+2. Each LLM call picks the next key via round-robin (also serves image-gen)
+3. On 429/rate-limit: try **fallback model on same key** first; on second failure mark key in cooldown (parses retry-after; default 65s)
+4. On 402/insufficient-credits: key permanently disabled until restart or manual re-add (NIM credits don't refill)
+5. Background timer (10s interval) reactivates rate-limited keys once cooldown elapses
+6. Mongo-backed LLM response cache (TTL: 24h notes / 7d translation / 1h chat) avoids burning credits on repeated prompts
+7. Admin can add/remove/inspect keys at runtime via `/api/v1/admin/nim-keys`
 
 ---
 

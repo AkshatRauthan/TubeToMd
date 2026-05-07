@@ -1,7 +1,7 @@
 import Session, { ISession } from '@models/session.model';
 import transcriptionService from '@services/transcription.service';
 import embeddingService from '@services/embedding.service';
-import groqService from '@services/groq.service';
+import nimService from '@services/nim.service';
 import CustomError from '@errors/custom.error';
 import { StatusCodes } from 'http-status-codes';
 import {
@@ -365,7 +365,7 @@ class SessionService {
     }
 
     /**
-     * Translate transcript to a target language using Groq AI.
+     * Translate transcript to a target language using NVIDIA NIM AI.
      * Stores the original transcription as a backup before overwriting.
      */
     async translateSession(
@@ -400,7 +400,7 @@ class SessionService {
             metadata.originalTranscription = JSON.stringify(session.transcription);
         }
 
-        const translated = await groqService.translateTranscription(
+        const translated = await nimService.translateTranscription(
             session.transcription,
             targetLanguage
         );

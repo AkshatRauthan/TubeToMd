@@ -7,7 +7,8 @@ This guide provides step-by-step instructions for deploying TubeToMD using a mod
 The application utilizes a distributed architecture managed by Docker Compose:
 1. **Frontend**: Vite + React SPA served via Nginx.
 2. **Backend**: Express + Node.js (Node 24) handles API routing and business logic.
-3. **Python Worker**: FastAPI + Python handles media processing and interfaces with Groq AI.
+3. **Python Worker**: FastAPI + Python handles media processing and Whisper transcription (Groq Whisper API).
+4. **AI Provider**: NVIDIA NIM (LLM + image generation) — backend talks to it via the OpenAI-compatible endpoint.
 4. **Data Layer**: Hosted remotely via **MongoDB Atlas** for high availability and persistence.
 
 ---
@@ -18,7 +19,8 @@ Ensure your deployment machine has the following:
 - [Docker](https://docs.docker.com/get-docker/) (20.10+)
 - [Docker Compose](https://docs.docker.com/compose/install/) (v2+)
 - **MongoDB Atlas Cluster**: A running cluster with a valid connection string.
-- **Groq API Key**: Essential for AI-driven transcription and notes.
+- **NVIDIA NIM API Key(s)**: Essential for LLM features (notes, chat, translation) and image generation. Get free keys at [build.nvidia.com](https://build.nvidia.com) — mobile OTP verification required, ~1000 free credits per key. Recommended: 2–3 keys for rotation.
+- **Groq API Key**: Required only for Whisper transcription of uploaded videos.
 
 ---
 
@@ -35,9 +37,12 @@ cp .env.example .env
 ### B. Required Variables
 Fill in the following in your root `.env`:
 - `MONGODB_URI`: Your Atlas connection string.
-- `GROQ_API_KEY`: Your primary Groq key.
+- `NVIDIA_API_KEY`: Primary NVIDIA NIM key (LLM + image generation).
+- `NVIDIA_API_KEYS`: Optional — comma-separated rotation pool for resilience.
+- `GROQ_API_KEY`: Required only if you want Whisper-based transcription for uploaded videos.
 - `JWT_SECRET`: A secure random string for authentication.
 - `GOOGLE_CLIENT_ID` / `SECRET`: Required if using Google Login.
+- `IMAGE_GEN_DAILY_QUOTA_PER_USER`: Per-user image gen cap (default `5`).
 
 > [!TIP]
 > This root `.env` file is automatically injected into all three containers by Docker Compose, eliminating the need to manage separate files in subdirectories.
@@ -88,8 +93,19 @@ Never expose internal ports directly. Use a reverse proxy like **Nginx Proxy Man
 - Backend API: `localhost:3000` (internal mapping)
 
 ### Key Rotation
-If you have multiple Groq accounts to avoid rate limits, you can provide a comma-separated list:
-`GROQ_API_KEYS=key1,key2,key3`
+NVIDIA NIM free credits are *lifetime per account* (not refilled per minute), so rotation across multiple keys multiplies your total budget. Provide a comma-separated list (2–3 keys is realistic given mobile-OTP verification):
+
+```
+NVIDIA_API_KEYS=key1,key2,key3
+```
+
+The `NimKeyManager` automatically:
+- Round-robins between active keys
+- Cools rate-limited keys (parses retry-after headers, default 65s) and reactivates them
+- **Permanently disables** keys that hit `402 insufficient credits` — re-add via `POST /api/v1/admin/nim-keys` once you have new keys
+- Falls back to the configured fallback model on the same key before rotating, to maximize per-key credit usage
+
+A Mongo-backed LLM response cache (TTL: 24h notes / 7d translation / 1h chat) further reduces credit burn on repeated prompts.
 
 ---
 
