@@ -7,6 +7,7 @@ export interface GenerateNotesRequest {
     endTimestamp?: number;
     topic?: string;
     customPrompt?: string;
+    regenerate?: boolean;
 }
 
 export interface UpdateNoteRequest {

@@ -62,6 +62,18 @@ function userFacingError(error: any, operation: string): never {
     );
 }
 
+function parseJsonObject(raw: string): Record<string, any> | null {
+    try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            return parsed as Record<string, any>;
+        }
+        return null;
+    } catch {
+        return null;
+    }
+}
+
 const PERSONA_PROMPTS: Record<string, string> = {
     detailed:
         'Create comprehensive, detailed notes covering every key point, example, code block, and concept discussed. Use headers, sub-headers, bullet points, and code blocks.',
@@ -84,6 +96,7 @@ interface CallOptions {
     maxTokens: number;
     temperature?: number;
     cache?: boolean;
+    responseFormat?: 'json_object';
 }
 
 const MAX_TOKENS_BY_OP: Record<string, number> = {
@@ -130,12 +143,19 @@ class NimService {
 
             for (const model of modelChain) {
                 try {
-                    const completion = await client.chat.completions.create({
+                    const payload: any = {
                         model,
                         messages: [{ role: 'user', content: prompt }],
                         temperature: opts.temperature ?? 0.7,
                         max_tokens: opts.maxTokens,
-                    });
+                    };
+                    
+                    if (opts.responseFormat) {
+                        payload.response_format = { type: opts.responseFormat };
+                        payload.messages[0].content += '\n\nYou MUST respond in valid JSON format only. Do not include markdown codeblocks like ```json.';
+                    }
+
+                    const completion = await client.chat.completions.create(payload);
 
                     const text = completion.choices[0]?.message?.content || '';
 
@@ -208,7 +228,9 @@ class NimService {
             })
             .join('\n');
 
-        const prompt = this.buildPrompt(type, transcriptText, options);
+        const basePrompt = this.buildPrompt(type, transcriptText, options);
+        const jsonSchemaPrompt = `\n\nReturn ONLY a valid JSON object with this schema:\n{\n  "title": "string",\n  "content": "string (markdown)",\n  "mermaidCode": "string or null"\n}\nRules:\n- content must be markdown text\n- mermaidCode must contain only Mermaid code without code fences\n- Do not include any extra keys or commentary`;
+        const prompt = basePrompt + jsonSchemaPrompt;
 
         const isStructured = type === 'mindmap' || type === 'flowchart';
         const operation = isStructured ? 'generate mindmap' : 'generate notes';
@@ -217,26 +239,33 @@ class NimService {
             ? serverConfig.NVIDIA_MODEL_FAST_FALLBACK
             : serverConfig.NVIDIA_MODEL_QUALITY_FALLBACK;
 
-        let text: string;
+        let rawResponse: string;
         try {
-            text = await this.callNim(prompt, operation, {
+            rawResponse = await this.callNim(prompt, operation, {
                 primaryModel,
                 fallbackModel,
                 maxTokens: MAX_TOKENS_BY_OP[operation] ?? MAX_TOKENS_BY_OP.default,
+                responseFormat: 'json_object'
             });
         } catch (error) {
             userFacingError(error, 'generate notes');
         }
 
-        let mermaidCode: string | undefined;
-        if (isStructured) {
+        const parsed = parseJsonObject(rawResponse);
+        let text = parsed?.content || rawResponse;
+        let title = parsed?.title || this.generateTitle(type, options);
+        let mermaidCode: string | undefined = parsed?.mermaidCode || undefined;
+
+        if (isStructured && !mermaidCode) {
             const mermaidMatch = text.match(/```mermaid\n([\s\S]*?)```/);
             if (mermaidMatch) {
                 mermaidCode = mermaidMatch[1].trim();
             }
         }
+        if (mermaidCode && typeof mermaidCode === 'string') {
+            mermaidCode = mermaidCode.trim();
+        }
 
-        const title = this.generateTitle(type, options);
         return { content: text, mermaidCode, title };
     }
 
@@ -261,19 +290,34 @@ class NimService {
 
         switch (type) {
             case 'summary':
-                return `${baseContext}${personaPrompt}\n\nGenerate a well-structured Markdown summary from the following video transcript. Include relevant timestamps in [MM:SS] format.\n\nTranscript:\n${transcriptText}`;
+                return `${baseContext}${personaPrompt}\n\nGenerate a well-structured Markdown summary from the following video transcript. Include relevant timestamps in [MM:SS] format.\n\nFORMAT REQUIREMENTS:\n# Summary\n[Concise overview paragraph]\n\n## Key Takeaways\n- [Takeaway 1] ([MM:SS])\n- [Takeaway 2] ([MM:SS])\n\nTranscript:\n${transcriptText}`;
             case 'detailed_notes':
-                return `${baseContext}${personaPrompt}\n\nGenerate comprehensive, detailed study notes in Markdown format from the following transcript. Include:\n- Main topics and subtopics with proper headers\n- Key concepts explained\n- Important examples and code blocks\n- Timestamps [MM:SS] for reference\n- Bullet points for key takeaways\n\nTranscript:\n${transcriptText}`;
+                return `${baseContext}${personaPrompt}\n\nGenerate comprehensive, detailed study notes in Markdown format from the following transcript. Include:\n- Main topics and subtopics with proper headers\n- Key concepts explained\n- Important examples and code blocks\n- Timestamps [MM:SS] for reference\n- Bullet points for key takeaways\n\nFORMAT REQUIREMENTS:\n# [Main Topic]\n## [Subtopic] ([MM:SS])\n[Detailed explanation with bullet points or code blocks if applicable]\n\nTranscript:\n${transcriptText}`;
             case 'mindmap':
-                return `${baseContext}Generate a mind map in Mermaid.js syntax from the following transcript. The mind map should show the hierarchical relationship between topics.\n\nUse this Mermaid syntax:\n\`\`\`mermaid\nmindmap\n  root((Main Topic))\n    Topic A\n      Subtopic A1\n      Subtopic A2\n    Topic B\n      Subtopic B1\n\`\`\`\n\nAlso provide a brief text explanation of the mind map structure.\n\nTranscript:\n${transcriptText}`;
+                return `${baseContext}Generate a mind map in Mermaid.js syntax from the following transcript. The mind map should show the hierarchical relationship between topics.\n\nUse this Mermaid syntax exactly and DO NOT use parentheses, brackets, or special characters inside node names (e.g. use "NodeName" instead of "Node (Name)"):
+\`\`\`mermaid
+mindmap
+  root((Main Topic))
+    Topic A
+      Subtopic A1
+      Subtopic A2
+    Topic B
+      Subtopic B1
+\`\`\`\n\nAlso provide a brief text explanation of the mind map structure in markdown.\n\nTranscript:\n${transcriptText}`;
             case 'flowchart':
-                return `${baseContext}Generate a flowchart in Mermaid.js syntax from the following transcript. The flowchart should show the logical flow or process described.\n\nUse this Mermaid syntax:\n\`\`\`mermaid\nflowchart TD\n    A[Start] --> B{Decision}\n    B -->|Yes| C[Action 1]\n    B -->|No| D[Action 2]\n\`\`\`\n\nAlso provide a brief text explanation.\n\nTranscript:\n${transcriptText}`;
+                return `${baseContext}Generate a flowchart in Mermaid.js syntax from the following transcript. The flowchart should show the logical flow or process described.\n\nUse this Mermaid syntax and DO NOT use parentheses or special characters inside node names:
+\`\`\`mermaid
+flowchart TD
+    A[Start] --> B{Decision}
+    B -->|Yes| C[Action 1]
+    B -->|No| D[Action 2]
+\`\`\`\n\nAlso provide a brief text explanation.\n\nTranscript:\n${transcriptText}`;
             case 'flashcards':
-                return `${baseContext}Generate flashcards from the following transcript in Markdown format. Format each card as:\n\n## Card N\n**Q:** [Question]\n**A:** [Answer]\n\nCreate at least 10-15 flashcards covering the key concepts. Make questions varied: definitions, explanations, comparisons, and applications.\n\nTranscript:\n${transcriptText}`;
+                return `${baseContext}Generate flashcards from the following transcript in Markdown format. Format each card as:\n\n## Card N\n**Q:** [Question]\n**A:** [Answer]\n\nCreate at least 10-15 flashcards covering the key concepts. Make questions varied: definitions, explanations, comparisons, and applications. DO NOT change the Q/A format.\n\nTranscript:\n${transcriptText}`;
             case 'resources':
-                return `${baseContext}Based on the following transcript, generate a list of additional follow-up resources. Include:\n- Related topics the viewer should explore next\n- Suggested search terms\n- Conceptual prerequisites\n- Related frameworks/tools mentioned\n- Potential practice exercises\n\nFormat in Markdown with proper sections.\n\nTranscript:\n${transcriptText}`;
+                return `${baseContext}Based on the following transcript, generate a list of additional follow-up resources. Include:\n- Related topics the viewer should explore next\n- Suggested search terms\n- Conceptual prerequisites\n- Related frameworks/tools mentioned\n- Potential practice exercises\n\nFORMAT REQUIREMENTS:\n# Follow-up Resources\n## Topics to Explore\n...\n## Suggested Search Terms\n...\n## Prerequisites\n...\n\nTranscript:\n${transcriptText}`;
             case 'diagram':
-                return `${baseContext}Generate a visual diagram description and Mermaid.js code that best represents the key concepts from this transcript. Choose the most appropriate diagram type (sequence, class, state, ER, etc.).\n\nTranscript:\n${transcriptText}`;
+                return `${baseContext}Generate a visual diagram description and Mermaid.js code that best represents the key concepts from this transcript. Choose the most appropriate diagram type (sequence, class, state, ER, etc.). DO NOT use parentheses or special characters inside node names to prevent syntax errors.\n\nTranscript:\n${transcriptText}`;
             case 'custom':
                 return `${baseContext}${options.customPrompt || personaPrompt}\n\nTranscript:\n${transcriptText}`;
             default:
@@ -338,7 +382,7 @@ ${context}
 ${historyText ? `PREVIOUS CONVERSATION:\n${historyText}\n` : ''}
 USER QUESTION: ${question}
 
-Provide a clear, well-formatted answer:`;
+Return ONLY a valid JSON object with this schema:\n{\n  "answer": "string (markdown)",\n  "citations": ["[MM:SS] ..."]\n}\nRules:\n- answer must be markdown text\n- citations can be empty if none apply\n- Do not include any extra keys or commentary`;
 
         // Chat answers are not cached — they're inherently context-dependent on history
         let answer: string;
@@ -348,59 +392,85 @@ Provide a clear, well-formatted answer:`;
                 fallbackModel: serverConfig.NVIDIA_MODEL_QUALITY_FALLBACK,
                 maxTokens: MAX_TOKENS_BY_OP['answer question'],
                 cache: false,
+                responseFormat: 'json_object',
             });
         } catch (error) {
             userFacingError(error, 'answer question');
         }
+        const parsedAnswer = parseJsonObject(answer);
+        const finalAnswer = parsedAnswer?.answer || answer;
+        const citations: string[] = Array.isArray(parsedAnswer?.citations) ? parsedAnswer.citations : [];
 
-        return { answer, sources: relevantChunks };
+        // Filter relevantChunks to only include those cited
+        let finalSources = relevantChunks;
+        if (citations.length > 0) {
+            finalSources = relevantChunks.filter(chunk => {
+                const mins = Math.floor(chunk.startTimestamp / 60);
+                const secs = Math.floor(chunk.startTimestamp % 60);
+                const timeStr = `[${mins}:${secs.toString().padStart(2, '0')}]`;
+                const altTimeStr = `[${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}]`;
+                return citations.some(c => c.includes(timeStr) || c.includes(altTimeStr));
+            });
+            // Fallback if filtering removed everything but AI cited something
+            if (finalSources.length === 0) finalSources = relevantChunks;
+        }
+
+        return { answer: finalAnswer, sources: finalSources };
     }
 
     async translateTranscription(
         segments: ITranscriptSegment[],
         targetLanguage: string
     ): Promise<ITranscriptSegment[]> {
-        const BATCH_SIZE = 80;
-        const translated: ITranscriptSegment[] = [];
+        const numberedLines = segments
+            .map((seg, idx) => `[${idx}] ${seg.text}`)
+            .join('\n');
 
-        for (let i = 0; i < segments.length; i += BATCH_SIZE) {
-            const batch = segments.slice(i, i + BATCH_SIZE);
-            const numberedLines = batch
-                .map((seg, idx) => `[${idx}] ${seg.text}`)
-                .join('\n');
+        const prompt = `Translate EVERY line below into ${targetLanguage}.
 
-            const prompt = `Translate EVERY line below into ${targetLanguage}. Keep the exact same number of lines and the [N] prefix on each line. Output ONLY the translated lines, nothing else.
+Return ONLY a valid JSON object with this schema:
+{
+  "lines": [
+    { "index": 0, "text": "translated text" }
+  ]
+}
 
+Rules:
+- Preserve the exact number of lines and order
+- Use the original index for each line
+- Do not add extra keys or commentary
+
+SOURCE LINES:
 ${numberedLines}`;
 
-            let responseText: string;
-            try {
-                responseText = await this.callNim(prompt, 'translate transcript', {
-                    primaryModel: serverConfig.NVIDIA_MODEL_FAST,
-                    fallbackModel: serverConfig.NVIDIA_MODEL_FAST_FALLBACK,
-                    maxTokens: MAX_TOKENS_BY_OP['translate transcript'],
-                    temperature: 0.3,
-                });
-                responseText = responseText.trim();
-            } catch (error) {
-                userFacingError(error, 'translate transcript');
-            }
-            const lines = responseText.split('\n').filter((l) => l.trim());
+        let responseText: string;
+        try {
+            responseText = await this.callNim(prompt, 'translate transcript', {
+                primaryModel: serverConfig.NVIDIA_MODEL_FAST,
+                fallbackModel: serverConfig.NVIDIA_MODEL_FAST_FALLBACK,
+                maxTokens: MAX_TOKENS_BY_OP['translate transcript'],
+                temperature: 0.3,
+                responseFormat: 'json_object',
+            });
+            responseText = responseText.trim();
+        } catch (error) {
+            userFacingError(error, 'translate transcript');
+        }
 
-            for (let j = 0; j < batch.length; j++) {
-                let translatedText = batch[j].text;
-                if (j < lines.length) {
-                    translatedText = lines[j].replace(/^\[\d+\]\s*/, '').trim();
-                }
-                translated.push({
-                    start: batch[j].start,
-                    duration: batch[j].duration,
-                    text: translatedText,
-                });
+        const parsed = parseJsonObject(responseText);
+        const lines = Array.isArray(parsed?.lines) ? parsed?.lines : [];
+        const mapped = new Map<number, string>();
+        for (const line of lines) {
+            if (typeof line?.index === 'number' && typeof line?.text === 'string') {
+                mapped.set(line.index, line.text.trim());
             }
         }
 
-        return translated;
+        return segments.map((seg, idx) => ({
+            start: seg.start,
+            duration: seg.duration,
+            text: mapped.get(idx) ?? seg.text,
+        }));
     }
 }
 

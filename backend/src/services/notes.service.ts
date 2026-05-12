@@ -27,6 +27,25 @@ class NotesService {
             );
         }
 
+        const noteQuery: Record<string, unknown> = {
+            sessionId,
+            userId,
+            type: request.type,
+        };
+        if (request.persona) noteQuery.persona = request.persona;
+        if (request.topic) noteQuery.topic = request.topic;
+        if (request.startTimestamp !== undefined) {
+            noteQuery.startTimestamp = request.startTimestamp;
+        }
+        if (request.endTimestamp !== undefined) {
+            noteQuery.endTimestamp = request.endTimestamp;
+        }
+
+        if (!request.regenerate) {
+            const existing = await Note.findOne(noteQuery).sort({ createdAt: -1 });
+            if (existing) return existing;
+        }
+
         const result = await nimService.generateNotes(
             session.transcription,
             request.type,

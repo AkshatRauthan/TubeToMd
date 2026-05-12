@@ -480,7 +480,7 @@ export function DashboardPage() {
                 ) : (() => {
                     const filteredSessions = sessionSearch.trim()
                         ? sessions.filter(s =>
-                            s.title.toLowerCase().includes(sessionSearch.toLowerCase()) ||
+                            (s.title || '').toLowerCase().includes(sessionSearch.toLowerCase()) ||
                             (s.videoUrl || '').toLowerCase().includes(sessionSearch.toLowerCase())
                           )
                         : sessions;

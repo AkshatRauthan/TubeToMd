@@ -3,13 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ChevronLeft, ChevronRight, Shuffle, RotateCcw } from 'lucide-react';
 import type { Note } from '@/types';
 
-interface Flashcard {
+export interface Flashcard {
     id: number;
     question: string;
     answer: string;
 }
 
-function parseFlashcards(content: string): Flashcard[] {
+export function parseFlashcards(content: string): Flashcard[] {
     const cards: Flashcard[] = [];
 
     // Format 1: ## Card N\n**Q:** ...\n**A:** ...

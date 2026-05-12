@@ -16,7 +16,8 @@ import {
     StickyNote, Plus, Globe2, FileDown, Eraser,
     Share2, Link, SquareStack,
 } from 'lucide-react';
-import { FlashcardStudyMode } from '@/components/FlashcardStudyMode';
+import { FlashcardStudyMode, parseFlashcards } from '@/components/FlashcardStudyMode';
+import ReactPlayer from 'react-player';
 
 mermaid.initialize({
     startOnLoad: false,
@@ -87,6 +88,19 @@ function extractYouTubeId(url: string): string | null {
         if (match) return match[1];
     }
     return null;
+}
+
+function normalizeYouTubeUrl(url?: string): string | null {
+    if (!url) return null;
+    const trimmed = url.trim();
+    if (!trimmed) return null;
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    const id = extractYouTubeId(trimmed);
+    if (id) return `https://www.youtube.com/watch?v=${id}`;
+    if (trimmed.length === 11 && /^[\w-]+$/.test(trimmed)) {
+        return `https://www.youtube.com/watch?v=${trimmed}`;
+    }
+    return trimmed;
 }
 
 function formatTime(seconds: number) {
@@ -202,6 +216,10 @@ export function SessionPage() {
         () => (session?.videoUrl ? extractYouTubeId(session.videoUrl) : null),
         [session?.videoUrl]
     );
+    const youtubeUrl = useMemo(
+        () => normalizeYouTubeUrl(session?.videoUrl || undefined) || (youtubeVideoId ? `https://www.youtube.com/watch?v=${youtubeVideoId}` : null),
+        [session?.videoUrl, youtubeVideoId]
+    );
 
     // ─── Data Fetching ───────────────────────────────────────────
 
@@ -246,15 +264,7 @@ export function SessionPage() {
         }
     }, [id]);
 
-    // Load YouTube IFrame API
-    useEffect(() => {
-        if (!(window as any).YT) {
-            const tag = document.createElement('script');
-            tag.src = 'https://www.youtube.com/iframe_api';
-            const firstScript = document.getElementsByTagName('script')[0];
-            firstScript.parentNode?.insertBefore(tag, firstScript);
-        }
-    }, []);
+
 
     useEffect(() => {
         if (id) {
@@ -317,65 +327,7 @@ export function SessionPage() {
 
     // ─── Actions ─────────────────────────────────────────────────
 
-    // Initialize YouTube Player when video ID is available
-    useEffect(() => {
-        if (!youtubeVideoId || !session || session.videoType !== 'youtube') return;
 
-        const initPlayer = () => {
-            if (playerRef.current) return;
-            
-            const container = document.getElementById('yt-player-container');
-            if (!container) return;
-
-            playerRef.current = new (window as any).YT.Player('yt-player', {
-                videoId: youtubeVideoId,
-                playerVars: {
-                    autoplay: 0,
-                    controls: 1,
-                    modestbranding: 1,
-                    rel: 0,
-                    enablejsapi: 1,
-                    origin: window.location.origin,
-                },
-                events: {
-                    onReady: () => {
-                        console.log('[Session] YouTube Player ready');
-                        setPlayerReady(true);
-                    },
-                    onStateChange: (event: any) => {
-                        if (event.data === 1) { // playing
-                            // Start time sync interval
-                            const interval = setInterval(() => {
-                                if (playerRef.current && typeof playerRef.current.getCurrentTime === 'function') {
-                                    const time = playerRef.current.getCurrentTime();
-                                    setCurrentTime(time);
-                                }
-                            }, 250);
-                            (window as any).__ytInterval = interval;
-                        } else {
-                            // Clear interval when paused/stopped
-                            if ((window as any).__ytInterval) {
-                                clearInterval((window as any).__ytInterval);
-                            }
-                        }
-                    },
-                },
-            });
-        };
-
-        // Wait for YT API to load
-        if ((window as any).YT && (window as any).YT.Player) {
-            initPlayer();
-        } else {
-            (window as any).onYouTubeIframeAPIReady = initPlayer;
-        }
-
-        return () => {
-            if ((window as any).__ytInterval) {
-                clearInterval((window as any).__ytInterval);
-            }
-        };
-    }, [youtubeVideoId, session?.videoType]);
 
     const seekTo = (seconds: number) => {
         console.log(`[Session] Seeking to ${seconds}s`);
@@ -453,7 +405,7 @@ export function SessionPage() {
         setTimeout(() => setCopiedTranscript(false), 2000);
     };
 
-    const generateNote = async (type: NoteType) => {
+    const generateNote = async (type: NoteType, regenerate = false) => {
         if (!session || session.status !== 'ready') {
             console.warn('[Session] Cannot generate note: session not ready, status=', session?.status);
             toast.error('Session is not ready yet. Wait for transcription to complete.');
@@ -477,10 +429,19 @@ export function SessionPage() {
                 topic: topicFocus.trim() || undefined,
                 startTimestamp: parseTimeInput(noteStartTime),
                 endTimestamp: parseTimeInput(noteEndTime),
+                regenerate,
             });
             const newNote = res.data.data;
             console.log(`[Session] Note generated:`, { id: newNote._id, title: newNote.title, type: newNote.type });
-            setNotes(prev => [newNote, ...prev]);
+            setNotes(prev => {
+                const idx = prev.findIndex(n => n._id === newNote._id);
+                if (idx >= 0) {
+                    const copy = [...prev];
+                    copy[idx] = newNote;
+                    return copy;
+                }
+                return [newNote, ...prev];
+            });
             setActiveNote(newNote);
             toast.success(`${type.replace('_', ' ')} generated!`);
         } catch (err: any) {
@@ -783,7 +744,18 @@ export function SessionPage() {
     // ─── Note Viewer Modal ───────────────────────────────────────
 
     if (activeNote) {
-        return <NoteViewerFull note={activeNote} onBack={() => setActiveNote(null)} onExport={handleExport} onSeek={seekTo} onDelete={deleteNote} onUpdate={updateNote} />;
+        return (
+            <NoteViewerFull
+                note={activeNote}
+                onBack={() => setActiveNote(null)}
+                onExport={handleExport}
+                onSeek={seekTo}
+                onDelete={deleteNote}
+                onUpdate={updateNote}
+                onRegenerate={() => generateNote(activeNote.type, true)}
+                isRegenerating={generating === activeNote.type}
+            />
+        );
     }
 
     // ─── Main 3-Column Layout ────────────────────────────────────
@@ -805,8 +777,21 @@ export function SessionPage() {
 
                 {/* Video Player Placeholder */}
                 <div className="relative aspect-video rounded-xl overflow-hidden glass-panel group" id="yt-player-container">
-                    {isYouTube && youtubeVideoId ? (
-                        <div id="yt-player" className="w-full h-full" />
+                    {isYouTube && youtubeUrl ? (
+                        <ReactPlayer
+                            ref={playerRef}
+                            url={youtubeUrl}
+                            width="100%"
+                            height="100%"
+                            controls
+                            onProgress={({ playedSeconds }) => setCurrentTime(playedSeconds)}
+                            onReady={() => setPlayerReady(true)}
+                            config={{
+                                youtube: {
+                                    playerVars: { modestbranding: 1 }
+                                }
+                            }}
+                        />
                     ) : isUploaded && localVideoUrl ? (
                         <video
                             ref={videoRef}
@@ -1260,7 +1245,14 @@ export function SessionPage() {
                     {ACTION_BUTTONS.map(({ type, label, icon: Icon }) => (
                         <button
                             key={type}
-                            onClick={() => generateNote(type)}
+                            onClick={() => {
+                                const existing = notes.find(n => n.type === type && n.persona === selectedPersona);
+                                if (existing) {
+                                    setActiveNote(existing);
+                                } else {
+                                    generateNote(type);
+                                }
+                            }}
                             disabled={generating !== null || !isReady || !hasTranscript}
                             className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-primary-container to-primary text-white font-bold shadow-[0_0_20px_rgba(219,39,119,0.2)] hover:shadow-[0_0_30px_rgba(219,39,119,0.4)] active:scale-95 transition-all duration-300 group disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
                         >
@@ -1579,7 +1571,7 @@ export function SessionPage() {
 // ─── Full-Screen Note Viewer ─────────────────────────────────────
 
 function NoteViewerFull({
-    note, onBack, onExport, onSeek, onDelete, onUpdate,
+    note, onBack, onExport, onSeek, onDelete, onUpdate, onRegenerate, isRegenerating,
 }: {
     note: Note;
     onBack: () => void;
@@ -1587,6 +1579,8 @@ function NoteViewerFull({
     onSeek: (seconds: number) => void;
     onDelete: (noteId: string) => void;
     onUpdate: (noteId: string, content: string) => Promise<void>;
+    onRegenerate: () => void;
+    isRegenerating: boolean;
 }) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [isEditing, setIsEditing] = useState(false);
@@ -1700,6 +1694,16 @@ function NoteViewerFull({
                                     Study Mode
                                 </button>
                             )}
+                            {note.type === 'summary' && (
+                                <button
+                                    onClick={onRegenerate}
+                                    disabled={isRegenerating}
+                                    className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))]/10 transition disabled:opacity-50"
+                                >
+                                    {isRegenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                                    Regenerate
+                                </button>
+                            )}
                             <button
                                 onClick={() => setIsEditing(true)}
                                 className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))]/10 transition"
@@ -1736,6 +1740,17 @@ function NoteViewerFull({
                         className="flex-1 w-full bg-[hsl(var(--background))]/50 border border-[hsl(var(--border))] rounded-xl p-4 text-[hsl(var(--foreground))] font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] transition-all min-h-[500px] disabled:opacity-50"
                         placeholder="Write your notes here in Markdown..."
                     />
+                ) : note.type === 'flashcards' && parseFlashcards(note.content).length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {parseFlashcards(note.content).map(card => (
+                            <div key={card.id} className="bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded-xl p-5 shadow-sm">
+                                <h4 className="font-bold text-pink-400 mb-2 text-sm uppercase tracking-wider">Q: {card.question}</h4>
+                                <div className="text-[hsl(var(--foreground))] text-sm leading-relaxed prose prose-sm prose-invert max-w-none">
+                                    <ReactMarkdown>{card.answer}</ReactMarkdown>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 ) : (
                     <>
                         {note.mermaidCode && (
