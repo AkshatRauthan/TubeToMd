@@ -8,7 +8,7 @@ export function LandingPage() {
                 <section className="relative px-6 pt-16 pb-24 md:pt-32 md:pb-48 max-w-7xl mx-auto text-center hero-glow">
                     <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface-container-high border border-outline-variant/20 mb-8 animate-fade-in">
                         <span className="flex h-2 w-2 rounded-full bg-secondary animate-pulse"></span>
-                        <span className="text-xs font-bold tracking-widest text-secondary uppercase">Intelligence v2.0 is live</span>
+                        <span className="text-xs font-bold tracking-widest text-secondary uppercase">Intelligence v1.0 is live</span>
                     </div>
                     <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight text-slate-900 dark:text-white mb-8 leading-[1.1] animate-fade-in-up">
                         Transform Videos into <br />
@@ -44,7 +44,7 @@ export function LandingPage() {
                                 <p className="text-on-surface-variant text-lg">Beyond simple transcripts. We restructure information for the way your brain actually works.</p>
                             </div>
                             <div className="hidden md:block">
-                                <span className="text-sm font-bold uppercase tracking-widest text-primary">Core Capabilities</span>
+                                <span className="text-bg font-bold uppercase tracking-widest text-primary">Core Capabilities</span>
                             </div>
                         </div>
 

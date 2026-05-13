@@ -103,7 +103,7 @@ const MAX_TOKENS_BY_OP: Record<string, number> = {
     'generate notes': 6000,
     'generate mindmap': 1500,
     'answer question': 1024,
-    'translate transcript': 2048,
+    'translate transcript': 8192,
     default: 4096,
 };
 
@@ -422,11 +422,20 @@ Return ONLY a valid JSON object with this schema:\n{\n  "answer": "string (markd
         segments: ITranscriptSegment[],
         targetLanguage: string
     ): Promise<ITranscriptSegment[]> {
-        const numberedLines = segments
-            .map((seg, idx) => `[${idx}] ${seg.text}`)
-            .join('\n');
+        const CHUNK_SIZE = 60;
+        const chunks: ITranscriptSegment[][] = [];
+        for (let i = 0; i < segments.length; i += CHUNK_SIZE) {
+            chunks.push(segments.slice(i, i + CHUNK_SIZE));
+        }
 
-        const prompt = `Translate EVERY line below into ${targetLanguage}.
+        const translated: ITranscriptSegment[] = [];
+
+        for (const chunk of chunks) {
+            const numberedLines = chunk
+                .map((seg, idx) => `[${idx}] ${seg.text}`)
+                .join('\n');
+
+            const prompt = `Translate EVERY line below into ${targetLanguage}.
 
 Return ONLY a valid JSON object with this schema:
 {
@@ -443,34 +452,39 @@ Rules:
 SOURCE LINES:
 ${numberedLines}`;
 
-        let responseText: string;
-        try {
-            responseText = await this.callNim(prompt, 'translate transcript', {
-                primaryModel: serverConfig.NVIDIA_MODEL_FAST,
-                fallbackModel: serverConfig.NVIDIA_MODEL_FAST_FALLBACK,
-                maxTokens: MAX_TOKENS_BY_OP['translate transcript'],
-                temperature: 0.3,
-                responseFormat: 'json_object',
-            });
-            responseText = responseText.trim();
-        } catch (error) {
-            userFacingError(error, 'translate transcript');
-        }
+            let responseText: string;
+            try {
+                responseText = await this.callNim(prompt, 'translate transcript', {
+                    primaryModel: serverConfig.NVIDIA_MODEL_FAST,
+                    fallbackModel: serverConfig.NVIDIA_MODEL_FAST_FALLBACK,
+                    maxTokens: MAX_TOKENS_BY_OP['translate transcript'],
+                    temperature: 0.3,
+                    responseFormat: 'json_object',
+                });
+                responseText = responseText.trim();
+            } catch (error) {
+                userFacingError(error, 'translate transcript');
+            }
 
-        const parsed = parseJsonObject(responseText);
-        const lines = Array.isArray(parsed?.lines) ? parsed?.lines : [];
-        const mapped = new Map<number, string>();
-        for (const line of lines) {
-            if (typeof line?.index === 'number' && typeof line?.text === 'string') {
-                mapped.set(line.index, line.text.trim());
+            const parsed = parseJsonObject(responseText!);
+            const lines = Array.isArray(parsed?.lines) ? parsed.lines : [];
+            const mapped = new Map<number, string>();
+            for (const line of lines) {
+                if (typeof line?.index === 'number' && typeof line?.text === 'string') {
+                    mapped.set(line.index, line.text.trim());
+                }
+            }
+
+            for (let i = 0; i < chunk.length; i++) {
+                translated.push({
+                    start: chunk[i].start,
+                    duration: chunk[i].duration,
+                    text: mapped.get(i) ?? chunk[i].text,
+                });
             }
         }
 
-        return segments.map((seg, idx) => ({
-            start: seg.start,
-            duration: seg.duration,
-            text: mapped.get(idx) ?? seg.text,
-        }));
+        return translated;
     }
 }
 
