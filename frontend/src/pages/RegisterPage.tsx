@@ -79,7 +79,7 @@ export function RegisterPage() {
                                 <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--color-outline)] group-focus-within:text-[var(--color-primary)] transition-colors" />
                                 <input 
                                     className="w-full bg-surface dark:bg-[#111827] pl-12 pr-4 py-4 border border-[var(--color-outline-variant)]/30 rounded-xl text-[var(--color-on-surface)] placeholder:text-[var(--color-outline)]/50 focus:ring-2 focus:ring-[var(--color-primary-container)] focus:border-transparent transition-all outline-none" 
-                                    placeholder="John Doe" 
+                                    placeholder="Jane Doe" 
                                     type="text"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}

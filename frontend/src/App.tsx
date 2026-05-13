@@ -8,6 +8,9 @@ import { AuthCallbackPage } from '@/pages/AuthCallbackPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { SessionPage } from '@/pages/SessionPage';
 import { PublicSessionPage } from '@/pages/PublicSessionPage';
+import { PrivacyPage } from '@/pages/PrivacyPage';
+import { TermsPage } from '@/pages/TermsPage';
+import { ContactPage } from '@/pages/ContactPage';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { Toaster } from 'sonner';
 
@@ -15,9 +18,9 @@ function AppContent() {
     const { theme } = useTheme();
     return (
         <BrowserRouter>
-            <Toaster 
-                position="bottom-right" 
-                richColors 
+            <Toaster
+                position="bottom-right"
+                richColors
                 theme={theme as 'light' | 'dark'}
             />
             <Routes>
@@ -26,7 +29,10 @@ function AppContent() {
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<RegisterPage />} />
                     <Route path="/auth/callback" element={<AuthCallbackPage />} />
-                    
+                    <Route path="/privacy" element={<PrivacyPage />} />
+                    <Route path="/terms" element={<TermsPage />} />
+                    <Route path="/contact" element={<ContactPage />} />
+
                     {/* Public share route — no authentication required */}
                     <Route path="/share/:shareToken" element={<PublicSessionPage />} />
 
