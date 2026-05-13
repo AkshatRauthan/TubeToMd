@@ -76,7 +76,7 @@ TubeToMD extracts transcripts from YouTube videos (or user-uploaded videos via b
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/TubeToMD.git
+git clone https://github.com/AkshatRauthan/TubeToMD
 cd TubeToMD
 ```
 

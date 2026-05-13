@@ -25,16 +25,62 @@ export function LandingPage() {
                             View Demo
                         </Link>
                     </div>
+                </section>
 
-                    {/* Mock Dashboard */}
-                    <div className="relative max-w-5xl mx-auto group animate-fade-in-up" style={{ animationDelay: '300ms' }}>
-                        <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 via-secondary/10 to-primary/20 rounded-[3rem] blur-3xl opacity-50 group-hover:opacity-75 transition duration-1000"></div>
-                        <div className="relative glass-card rounded-3xl p-4 overflow-hidden border border-white/10 shadow-2xl">
-                            <img
-                                alt="TubeToMD Knowledge Interface"
-                                className="rounded-2xl w-full opacity-90 group-hover:opacity-100 transition-opacity duration-500"
-                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXWxva0ijTH7kgczMEqvRQl32n99a_5sjl4QSeu7yyAJFKosJBC-D0pYCwAmNBXm4PNtOjp5BybD1uc_w0Uya55okPxbbEp4j-kPN-Fj02ESpnSoX57di2OWN2yMySaVmP5Q7bz7DNc_EWlBmNVzxJxo5uiVOvAYrcHPR_Fy32eETlNYt0tt9MSRbeMFytNyuDp18-rPhJMO8q5GmXyJuoWd7dkW1RQprdQ7LRW-A5vzpQofPFsPFX8ogCO_aSSnhNdD4JiKm50iHz"
-                            />
+                {/* ── How It Works ─────────────────────────────────── */}
+                <section className="px-6 py-16 overflow-hidden">
+                    <div className="max-w-7xl mx-auto">
+                        <div className="text-center mb-14">
+                            <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white mb-4">Three Steps to Mastery</h2>
+                            <p className="text-on-surface-variant max-w-xl mx-auto">From URL to expertise in under 60 seconds.</p>
+                        </div>
+
+                        <div className="relative grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
+                            <div className="hidden md:block absolute top-[3.5rem] left-0 w-full h-px bg-gradient-to-r from-transparent via-outline-variant/30 to-transparent -z-10"></div>
+
+                            {/* Step 1 */}
+                            <div className="relative flex flex-col items-center text-center">
+                                <div className="w-14 h-14 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center text-2xl font-black text-primary mb-6 shadow-xl">1</div>
+                                <div className="glass-card p-6 rounded-3xl w-full">
+                                    <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Paste Link</h4>
+                                    <div className="bg-surface-container-lowest rounded-xl p-3 flex items-center gap-3 border border-outline-variant/10">
+                                        <span className="material-symbols-outlined text-slate-500 text-sm">link</span>
+                                        <div className="h-2 w-24 bg-slate-400 dark:bg-slate-700 rounded-full"></div>
+                                    </div>
+                                    <p className="text-on-surface-variant text-sm mt-5">Drop any YouTube URL into the input field and click "Process". And let the magic unleash.</p>
+                                </div>
+                            </div>
+
+                            {/* Step 2 */}
+                            <div className="relative flex flex-col items-center text-center">
+                                <div className="w-14 h-14 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center text-2xl font-black text-secondary mb-6 shadow-xl">2</div>
+                                <div className="glass-card p-6 rounded-3xl w-full">
+                                    <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-4">AI Processes</h4>
+                                    <div className="flex justify-center py-2">
+                                        <div className="relative w-10 h-10">
+                                            <div className="absolute inset-0 border-4 border-secondary/20 rounded-full"></div>
+                                            <div className="absolute inset-0 border-4 border-t-secondary rounded-full animate-spin"></div>
+                                        </div>
+                                    </div>
+                                    <p className="text-on-surface-variant text-sm mt-5">Our neural engine transcribes, analyses, and structures the video.</p>
+                                </div>
+                            </div>
+
+                            {/* Step 3 */}
+                            <div className="relative flex flex-col items-center text-center">
+                                <div className="w-14 h-14 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center text-2xl font-black text-on-surface mb-6 shadow-xl">3</div>
+                                <div className="glass-card p-6 rounded-3xl w-full">
+                                    <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Get Notes</h4>
+                                    <div className="space-y-2 text-left px-2">
+                                        <div className="h-1.5 w-full bg-slate-400 dark:bg-slate-600 rounded-full"></div>
+                                        <div className="h-1.5 w-full bg-slate-400 dark:bg-slate-600 rounded-full"></div>
+                                        <div className="h-1.5 w-4/5 bg-slate-400 dark:bg-slate-600 rounded-full"></div>
+                                        <div className="h-1.5 w-4/5 bg-slate-400 dark:bg-slate-600 rounded-full"></div>
+                                        <div className="h-1.5 w-2/4 bg-primary/40 rounded-full"></div>
+                                    </div>
+                                    <p className="text-on-surface-variant text-sm mt-5">Receive summaries, flashcards, mindmaps, and more — all in one place.</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -109,62 +155,6 @@ export function LandingPage() {
                                 </div>
                                 <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Export Anywhere</h3>
                                 <p className="text-on-surface-variant text-sm leading-relaxed">One-click export to Markdown, HTML, or PDF. Your notes live where you already work.</p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                {/* ── How It Works ─────────────────────────────────── */}
-                <section className="px-6 py-16 overflow-hidden">
-                    <div className="max-w-7xl mx-auto">
-                        <div className="text-center mb-14">
-                            <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white mb-4">Three Steps to Mastery</h2>
-                            <p className="text-on-surface-variant max-w-xl mx-auto">From URL to expertise in under 60 seconds.</p>
-                        </div>
-
-                        <div className="relative grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
-                            <div className="hidden md:block absolute top-[3.5rem] left-0 w-full h-px bg-gradient-to-r from-transparent via-outline-variant/30 to-transparent -z-10"></div>
-
-                            {/* Step 1 */}
-                            <div className="relative flex flex-col items-center text-center">
-                                <div className="w-14 h-14 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center text-2xl font-black text-primary mb-6 shadow-xl">1</div>
-                                <div className="glass-card p-6 rounded-3xl w-full">
-                                    <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Paste Link</h4>
-                                    <div className="bg-surface-container-lowest rounded-xl p-3 flex items-center gap-3 border border-outline-variant/10">
-                                        <span className="material-symbols-outlined text-slate-500 text-sm">link</span>
-                                        <div className="h-2 w-24 bg-slate-400 dark:bg-slate-700 rounded-full"></div>
-                                    </div>
-                                    <p className="text-on-surface-variant text-sm mt-5">Drop any YouTube URL into the intelligent input field.</p>
-                                </div>
-                            </div>
-
-                            {/* Step 2 */}
-                            <div className="relative flex flex-col items-center text-center">
-                                <div className="w-14 h-14 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center text-2xl font-black text-secondary mb-6 shadow-xl">2</div>
-                                <div className="glass-card p-6 rounded-3xl w-full">
-                                    <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-4">AI Processes</h4>
-                                    <div className="flex justify-center py-2">
-                                        <div className="relative w-10 h-10">
-                                            <div className="absolute inset-0 border-4 border-secondary/20 rounded-full"></div>
-                                            <div className="absolute inset-0 border-4 border-t-secondary rounded-full animate-spin"></div>
-                                        </div>
-                                    </div>
-                                    <p className="text-on-surface-variant text-sm mt-5">Our neural engine transcribes, analyses, and structures the video.</p>
-                                </div>
-                            </div>
-
-                            {/* Step 3 */}
-                            <div className="relative flex flex-col items-center text-center">
-                                <div className="w-14 h-14 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center text-2xl font-black text-on-surface mb-6 shadow-xl">3</div>
-                                <div className="glass-card p-6 rounded-3xl w-full">
-                                    <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Get Notes</h4>
-                                    <div className="space-y-2 text-left px-2">
-                                        <div className="h-1.5 w-full bg-slate-400 dark:bg-slate-600 rounded-full"></div>
-                                        <div className="h-1.5 w-4/5 bg-slate-400 dark:bg-slate-600 rounded-full"></div>
-                                        <div className="h-1.5 w-3/4 bg-primary/40 rounded-full"></div>
-                                    </div>
-                                    <p className="text-on-surface-variant text-sm mt-5">Receive summaries, flashcards, mindmaps, and more — all in one place.</p>
-                                </div>
                             </div>
                         </div>
                     </div>

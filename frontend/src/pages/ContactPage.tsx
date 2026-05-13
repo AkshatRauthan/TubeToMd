@@ -58,12 +58,12 @@ export function ContactPage() {
                     </p>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
                     {/* Contact info sidebar */}
                     <div className="flex flex-col gap-4">
                         <a
                             href="mailto:support@tubetomd.com"
-                            className="glass-card rounded-2xl p-5 flex items-start gap-4 hover:border-pink-500/30 transition-all group"
+                            className="glass-card rounded-2xl p-5 flex items-start gap-4 hover:border-pink-500/30 transition-all group flex-1"
                         >
                             <div className="p-2.5 rounded-xl bg-pink-500/10 text-pink-400 flex-shrink-0 group-hover:bg-pink-500/20 transition">
                                 <Mail className="h-5 w-5" />
@@ -76,22 +76,22 @@ export function ContactPage() {
                         </a>
 
                         <a
-                            href="https://github.com"
+                            href="https://github.com/AkshatRauthan/TubeToMD"
                             target="_blank"
                             rel="noreferrer"
-                            className="glass-card rounded-2xl p-5 flex items-start gap-4 hover:border-pink-500/30 transition-all group"
+                            className="glass-card rounded-2xl p-5 flex items-start gap-4 hover:border-pink-500/30 transition-all group flex-1"
                         >
                             <div className="p-2.5 rounded-xl bg-slate-500/10 text-slate-400 flex-shrink-0 group-hover:bg-slate-500/20 transition">
                                 <Github className="h-5 w-5" />
                             </div>
                             <div>
                                 <p className="font-semibold text-sm text-slate-900 dark:text-white mb-0.5">GitHub Issues</p>
-                                <p className="text-xs text-slate-500">github.com/TubeToMD</p>
+                                <p className="text-xs text-slate-500">github.com/AkshatRauthan/TubeToMD</p>
                                 <p className="text-xs text-slate-600 mt-1">Best for bug reports</p>
                             </div>
                         </a>
 
-                        <div className="glass-card rounded-2xl p-5 flex items-start gap-4">
+                        <div className="glass-card rounded-2xl p-5 flex items-start gap-4 flex-1">
                             <div className="p-2.5 rounded-xl bg-secondary/10 text-secondary flex-shrink-0">
                                 <MessageSquare className="h-5 w-5" />
                             </div>

@@ -1,15 +1,17 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth.store';
 import { useTheme } from '@/contexts/ThemeContext';
-import { LogOut, Menu, X, LayoutDashboard, Sun, Moon } from 'lucide-react';
+import { LogOut, Menu, X, LayoutDashboard, Sun, Moon, Star } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { RateUsModal } from '@/pages/RateUs';
 
 export function Navbar() {
     const { user, isAuthenticated, logout } = useAuthStore();
     const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [rateOpen, setRateOpen] = useState(false);
 
     const handleLogout = () => {
         logout();
@@ -17,6 +19,7 @@ export function Navbar() {
     };
 
     return (
+        <>
         <nav className="fixed top-0 w-full z-50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800/50 shadow-sm dark:shadow-[0_0_40px_-15px_rgba(219,39,119,0.3)] transition-colors duration-300">
             <div className="flex justify-between items-center px-6 py-4 max-w-7xl mx-auto">
                 {/* Logo */}
@@ -33,6 +36,20 @@ export function Navbar() {
                     {isAuthenticated && (
                         <Link to="/dashboard" className="text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition-colors flex items-center gap-1">
                             Dashboard
+                        </Link>
+                    )}
+                    {isAuthenticated && (
+                        <button
+                            onClick={() => setRateOpen(true)}
+                            className="flex items-center gap-1.5 text-slate-600 hover:text-amber-400 dark:text-slate-400 dark:hover:text-amber-400 transition-colors font-semibold text-sm"
+                        >
+                            <Star className="h-4 w-4" />
+                            Rate Us
+                        </button>
+                    )}
+                    {isAuthenticated && (
+                        <Link to="/contact" className="text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition-colors font-semibold text-sm">
+                            Contact
                         </Link>
                     )}
                 </div>
@@ -116,6 +133,20 @@ export function Navbar() {
                                         Dashboard
                                     </Link>
                                     <button
+                                        onClick={() => { setRateOpen(true); setMobileOpen(false); }}
+                                        className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 w-full transition"
+                                    >
+                                        <Star className="h-4 w-4 text-amber-400" />
+                                        Rate Us
+                                    </button>
+                                    <Link
+                                        to="/contact"
+                                        className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                        onClick={() => setMobileOpen(false)}
+                                    >
+                                        Contact Us
+                                    </Link>
+                                    <button
                                         onClick={() => { handleLogout(); setMobileOpen(false); }}
                                         className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-rose-500 hover:bg-rose-500/10 w-full transition"
                                     >
@@ -146,5 +177,8 @@ export function Navbar() {
                 )}
             </AnimatePresence>
         </nav>
+
+        <RateUsModal open={rateOpen} onClose={() => setRateOpen(false)} />
+        </>
     );
 }
