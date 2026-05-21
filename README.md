@@ -9,7 +9,7 @@ TubeToMD extracts transcripts from YouTube videos (or user-uploaded videos via b
 ## Features
 
 - **YouTube Transcript Extraction** — Paste any YouTube URL; transcripts are fetched automatically with timestamps
-- **Video Upload with Groq Whisper** — Upload video files; audio is extracted in-browser with FFmpeg.wasm, chunked, and transcribed via Groq Whisper API (`whisper-large-v3-turbo`)
+- **Video Upload with Groq Whisper** — Upload video files; audio is extracted in-browser with FFmpeg.wasm, chunked, and transcribed via Groq Whisper API (`whisper-large-v3-turbo`). Free tier: 20 RPM / 2,000 RPD / 28,800 ASD (org-level limits)
 - **AI Note Generation** — 6 note types: Summary, Detailed Notes, Mind Map, Flowchart, Flashcards, Study Guide
 - **7 Summary Personas** — Detailed, Executive, ELI5, Code-Heavy, Actionable, Academic, Custom
 - **RAG-Powered Chat** — Ask questions about the video; answers cite specific timestamps via MongoDB Atlas Vector Search
@@ -34,7 +34,7 @@ TubeToMD extracts transcripts from YouTube videos (or user-uploaded videos via b
 |-------|-----------||
 | **Frontend** | React 19 · TypeScript · Vite 7 · TailwindCSS v4 · Zustand · TanStack Query · Framer Motion · Mermaid.js |
 | **Backend** | Express 5 · TypeScript · Mongoose 8 · JWT · pdfkit · openai SDK (NIM-compatible) |
-| **Transcription** | Python FastAPI · Groq Whisper API (`whisper-large-v3-turbo`) · youtube-transcript-api |
+| **Transcription** | Python FastAPI · Groq Whisper API (`whisper-large-v3-turbo`, 20 RPM / 2K RPD / 28.8K ASD free) · youtube-transcript-api |
 | **Database** | MongoDB Atlas (with Atlas Vector Search for RAG, TTL-based LLM cache) |
 | **AI (LLM)** | NVIDIA NIM — Llama 3.3 70B (notes, chat) · Llama 3.1 8B (translation) · Nemotron 70B / Mistral Small 24B fallbacks |
 | **AI (Image)** | NVIDIA NIM — FLUX.1-schnell (primary) · Stable Diffusion 3 Medium (fallback) |
@@ -71,7 +71,7 @@ TubeToMD extracts transcripts from YouTube videos (or user-uploaded videos via b
 - **MongoDB** (Atlas recommended for Vector Search)
 - **FFmpeg** installed on your system (for audio processing)
 - An **NVIDIA NIM API key** — get one free at [build.nvidia.com](https://build.nvidia.com) (mobile OTP verification required, ~1000 free credits per key; 2–3 keys recommended for rotation)
-- A **Groq API key** — *only required if using Whisper transcription for uploaded videos*; get free at [console.groq.com/keys](https://console.groq.com/keys)
+- A **Groq API key** — *only required if using Whisper transcription for uploaded videos*; get free at [console.groq.com/keys](https://console.groq.com/keys). Free tier provides 20 RPM / 2,000 RPD / 28,800 audio seconds per day (org-level limits; key rotation does NOT multiply quota)
 
 ### 1. Clone the Repository
 
@@ -245,10 +245,12 @@ TubeToMD/
 │   │   ├── routes/           # Transcription endpoints
 │   │   └── utils/            # Audio processing (FFmpeg)
 │   └── requirements.txt
-└── docs/
-    ├── FEATURES.md           # Feature tracking & roadmap
-    ├── ARCHITECTURE.md       # Technical architecture docs
-    └── implementation_plan.md # Groq migration implementation plan
+    └── docs/
+        ├── FEATURES.md           # Feature tracking & roadmap
+        ├── ARCHITECTURE.md       # Technical architecture docs
+        ├── implementation_plan.md # Migration plan + Groq Whisper analysis + HF deployment
+        ├── deployment.md         # HuggingFace Spaces deployment guide
+        └── ROADMAP.md            # Development roadmap & progress tracker
 ```
 
 ---
@@ -283,7 +285,9 @@ TubeToMD/
 
 - [docs/FEATURES.md](docs/FEATURES.md) — Feature tracking and roadmap
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Detailed technical architecture
-- [docs/implementation_plan.md](docs/implementation_plan.md) — Groq migration implementation plan
+- [docs/implementation_plan.md](docs/implementation_plan.md) — Migration plan + Groq Whisper rate limit analysis + HuggingFace deployment plan
+- [docs/deployment.md](docs/deployment.md) — HuggingFace Spaces deployment guide
+- [docs/ROADMAP.md](docs/ROADMAP.md) — Development roadmap and progress tracker
 
 ---
 

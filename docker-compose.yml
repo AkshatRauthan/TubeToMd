@@ -1,4 +1,15 @@
+# ──────────────────────────────────────────────────────────────
+# TubeToMD — Local Development Docker Compose
+# ──────────────────────────────────────────────────────────────
+# Usage (Linux/macOS/Windows):
+#   docker compose up --build
+#
+# Spins up all 3 services with hot-reload for development.
+# All env vars are read from the root .env file.
+# ──────────────────────────────────────────────────────────────
+
 services:
+  # ── Python Transcription Service ────────────────────────────
   python:
     build:
       context: ./python
@@ -6,46 +17,62 @@ services:
     container_name: tubetomd_python
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
-      - GROQ_API_KEY=${GROQ_API_KEY}
-    restart: always
+      - PORT=8000
     volumes:
       - ./python:/app
+      - python_uploads:/app/uploads
+    # Hot-reload for development
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
+  # ── Node.js Backend API ─────────────────────────────────────
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: tubetomd_backend
     ports:
-      - "3000:3000"
+      - "5000:5000"
+    env_file:
+      - .env
     environment:
-      - PORT=3000
-      - MONGODB_URI=${MONGODB_URI}
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - PORT=5000
       - PYTHON_SERVICE_URL=http://python:8000
-      - NVIDIA_API_KEY=${NVIDIA_API_KEY}
-      - NVIDIA_API_KEYS=${NVIDIA_API_KEYS}
-      - NVIDIA_MODEL_QUALITY=${NVIDIA_MODEL_QUALITY}
-      - NVIDIA_MODEL_FAST=${NVIDIA_MODEL_FAST}
-      - NVIDIA_MODEL_IMAGE=${NVIDIA_MODEL_IMAGE}
-      - IMAGE_GEN_DAILY_QUOTA_PER_USER=${IMAGE_GEN_DAILY_QUOTA_PER_USER}
-      - ADMIN_API_TOKEN=${ADMIN_API_TOKEN}
+      - FRONTEND_URL=http://localhost:5173
+    volumes:
+      - ./backend/src:/app/src
+      - backend_uploads:/app/uploads
     depends_on:
-      - python
-    restart: always
+      python:
+        condition: service_healthy
+    restart: unless-stopped
 
+  # ── React Frontend (Vite Dev Server) ────────────────────────
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: tubetomd_frontend
     ports:
-      - "5173:80"
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:5000/api
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
     depends_on:
       - backend
-    restart: always
+    restart: unless-stopped
+
+volumes:
+  python_uploads:
+  backend_uploads:

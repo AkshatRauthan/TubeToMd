@@ -1,0 +1,25 @@
+# ──────────────────────────────────────────────────────────────
+# TubeToMD Frontend — Development Dockerfile
+# ──────────────────────────────────────────────────────────────
+# Used by: docker-compose.yml (local development)
+# Features: Vite dev server with HMR, source volume-mounted
+# ──────────────────────────────────────────────────────────────
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies (cached layer)
+COPY package*.json ./
+RUN npm install
+
+# Copy config files needed for Vite
+COPY vite.config.ts tsconfig*.json index.html ./
+
+# Source code is volume-mounted from host for HMR
+# (see docker-compose.yml volumes section)
+
+EXPOSE 5173
+
+# Vite dev server — host 0.0.0.0 so it's accessible from outside container
+CMD ["npx", "vite", "--host", "0.0.0.0", "--port", "5173"]

@@ -1,6 +1,6 @@
 # TubeToMD — Feature Tracking
 
-> **Last Updated:** July 2025
+> **Last Updated:** May 2026
 
 ## Implemented
 
@@ -11,18 +11,18 @@
 - [x] **Auth Middleware** — JWT verification, request user augmentation, token expiry handling
 - [x] **Upload Middleware** — Multer for audio chunk uploads, UUID filenames, audio MIME validation, 100MB/chunk limit
 - [x] **Auth Service** — Register, login, Google OAuth (with email-based account linking), set password, link Google, refresh tokens, profile CRUD
-- [x] **Session Service** — Create YouTube sessions, chunk-based upload flow, parallel Whisper transcription, session CRUD, transcript retrieval with time range filtering
+- [x] **Session Service** — Create YouTube sessions, chunk-based upload flow, Groq Whisper transcription, session CRUD, transcript retrieval with time range filtering
 - [x] **Session Deduplication** — `findByVideoUrl()` prevents duplicate sessions for the same YouTube URL
 - [x] **Session Rename** — `updateSession()` with PUT endpoint for inline title editing
-- [x] **Transcription Service** — Bridge to Python FastAPI for YouTube transcription, chunk-based Whisper transcription with offset adjustment
-- [x] **Gemini Service** — LLM wrapper for note generation (6 types + custom), RAG Q&A, embedding generation, transcript translation (20 languages)
-- [x] **Gemini Key Rotation** — `GeminiKeyManager` singleton: circular queue of N API keys, round-robin selection, auto-exhaustion on 429, parsed refill timers, background reactivation (10s interval)
-- [x] **Admin API** — Protected `/api/v1/admin/gemini-keys` endpoints (GET status / POST add / DELETE remove), bearer token auth via `ADMIN_API_TOKEN`
+- [x] **Transcription Service** — Bridge to Python FastAPI for YouTube transcription, chunk-based Groq Whisper transcription with offset adjustment
+- [x] **NIM Service** — NVIDIA NIM LLM wrapper for note generation (6 types + custom), RAG Q&A, transcript translation (20 languages), with model fallback chain (70B → Nemotron, 8B → Mistral Small)
+- [x] **NIM Key Rotation** — `NimKeyManager` singleton: circular queue of N API keys, round-robin selection, credit-exhaustion tracking (NIM credits are lifetime), fallback-model-before-rotate, Mongo-backed TTL response cache
+- [x] **Admin API** — Protected `/api/v1/admin/nim-keys` endpoints (GET status / POST add / DELETE remove), bearer token auth via `ADMIN_API_TOKEN`
 - [x] **Embedding Service** — Transcript chunking, embedding generation/storage, MongoDB Atlas Vector Search with text fallback
-- [x] **Notes Service** — Generate notes (summary, detailed, mindmap, flowchart, flashcards, resources, diagram, custom), CRUD operations
-- [x] **Chat Service** — RAG-based Q&A with vector search, chat history management, Gemini integration with context
+- [x] **Notes Service** — Generate notes via NVIDIA NIM (summary, detailed, mindmap, flowchart, flashcards, resources, diagram, custom), CRUD operations
+- [x] **Chat Service** — RAG-based Q&A with vector search, chat history management, NIM LLM integration with context
 - [x] **Annotation Service** — Create/update/delete highlights, append highlighted text to notes
-- [x] **Translation Service** — Gemini-powered batch translation of transcript segments (20 languages), restore-original support
+- [x] **Translation Service** — NVIDIA NIM-powered batch translation of transcript segments (20 languages), restore-original support
 - [x] **Report Service** — PDF report generation with pdfkit: title page, TOC, summary, detailed notes, visual diagrams, flashcards, study guide, user annotations, full transcript, page numbers
 - [x] **Export Service** — Markdown and HTML export with styling
 - [x] **Custom Summary Personas** — detailed, executive, eli5, code-heavy, actionable, academic, custom
@@ -30,15 +30,15 @@
 - [x] **V1 Routes** — Auth, Session, Notes, Chat, Annotation, Admin route files wired to controllers
 - [x] **Error Handling** — CustomError class, centralized error handler middleware, `handleGeminiError()` with user-friendly messages (no raw API errors leak to frontend)
 - [x] **CORS Config** — Configured for local development
-- [x] **Gemini Config** — Flash 2.0 + text-embedding-004 initialization via key manager
+- [x] **NIM Config** — NVIDIA NIM endpoint config, model routing (quality/fast tiers), image gen models (FLUX/SD3)
 
 ### Python Service (FastAPI)
 - [x] **YouTube Transcription** — youtube-transcript-api with multi-format URL parsing
-- [x] **Whisper Transcription** — OpenAI Whisper (configurable model), per-chunk transcription with offset-adjusted timestamps, chunk merge with edge deduplication
+- [x] **Whisper Transcription** — Groq Whisper API (`whisper-large-v3-turbo`), per-chunk transcription with offset-adjusted timestamps, chunk merge with edge deduplication. Free tier: 20 RPM / 2,000 RPD / 28,800 ASD (org-level limits)
 - [x] **Audio Utilities** — FFmpeg audio extraction (16kHz mono WAV), ffprobe duration detection
 - [x] **Chunk Endpoints** — POST /transcribe/chunk (single chunk) + POST /transcribe/merge (merge all chunks)
 - [x] **Health Endpoint** — Service health check
-- [x] **Configuration** — Pydantic Settings, .env support, configurable Whisper model/file size limits
+- [x] **Configuration** — Pydantic Settings, .env support, configurable Whisper model/file size limits (25 MB per request max)
 
 ### Frontend (React 19 + Vite 7 + TailwindCSS v4)
 - [x] **Project Scaffolding** — Vite + React 19 + TypeScript with Tailwind CSS v4
@@ -101,12 +101,14 @@
 
 ## Architecture Quick Reference
 
-| Service | Port | Tech |
-|---------|------|------|
-| Backend API | 5000 | Express 5 + TypeScript + Mongoose 8 |
-| Python Service | 8000 | FastAPI + Whisper + youtube-transcript-api |
-| Frontend | 5173 | React 19 + Vite 7 + TailwindCSS v4 |
-| Database | 27017 | MongoDB Atlas (Vector Search for RAG) |
+| Service | Port (Dev) | Port (HF) | Tech |
+|---------|------------|------------|------|
+| Backend API | 5000 | 7860 | Express 5 + TypeScript + Mongoose 8 |
+| Python Service | 8000 | 7860 | FastAPI + Groq Whisper API + youtube-transcript-api |
+| Frontend | 5173 | — | React 19 + Vite 7 + TailwindCSS v4 |
+| Database | 27017 | — | MongoDB Atlas (Vector Search for RAG) |
+| LLM Provider | — | — | NVIDIA NIM (Llama 3.3 70B / 3.1 8B + fallbacks) |
+| Transcription | — | — | Groq Whisper (`whisper-large-v3-turbo`) |
 
 ### Running the Project
 
@@ -124,8 +126,9 @@ cd frontend && npm run dev
 ### Environment Variables
 
 Copy the `.env.example` files in `backend/` and `python/` and fill in:
-- `GEMINI_API_KEY` — Get from https://aistudio.google.com/apikey
-- `GEMINI_API_KEYS` — Optional comma-separated additional keys for rotation
+- `NVIDIA_API_KEY` — Get free at [build.nvidia.com](https://build.nvidia.com) (~1000 credits/key)
+- `NVIDIA_API_KEYS` — Optional comma-separated additional keys for rotation
+- `GROQ_API_KEY` — Get free at [console.groq.com/keys](https://console.groq.com/keys) (for Whisper transcription only)
 - `ADMIN_API_TOKEN` — Any secret string for admin API authentication
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — From Google Cloud Console (for OAuth)
 - `MONGODB_URI` — Your MongoDB connection string

@@ -1,0 +1,63 @@
+# ──────────────────────────────────────────────────────────────
+# TubeToMD — Production Docker Compose
+# ──────────────────────────────────────────────────────────────
+# Usage (Linux/macOS/Windows):
+#   docker compose -f docker-compose.prod.yml up --build -d
+#
+# Production-optimized builds: no volume mounts, no hot-reload,
+# multi-stage builds, Nginx for frontend.
+# All env vars are read from the root .env file.
+# ──────────────────────────────────────────────────────────────
+
+services:
+  # ── Python Transcription Service ────────────────────────────
+  python:
+    build:
+      context: ./python
+      dockerfile: Dockerfile
+    container_name: tubetomd_python_prod
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - PORT=8000
+    restart: always
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ── Node.js Backend API ─────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tubetomd_backend_prod
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - PORT=3000
+      - PYTHON_SERVICE_URL=http://python:8000
+    depends_on:
+      python:
+        condition: service_healthy
+    restart: always
+
+  # ── React Frontend (Nginx) ──────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000/api}
+    container_name: tubetomd_frontend_prod
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always

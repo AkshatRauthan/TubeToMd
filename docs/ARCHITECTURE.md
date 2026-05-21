@@ -4,7 +4,10 @@
 > **Author:** Akshat Rauthan
 
 > ### Migration Notice (May 2026)
-> The LLM stack migrated from **Groq → NVIDIA NIM** (`build.nvidia.com`). All chat / notes / translation calls now use NIM's OpenAI-compatible endpoint. Image generation was added (FLUX.1-schnell, SD3-medium fallback). Whisper transcription is still served by Groq (separate concern, not migrated). Wherever this document still references "Groq" for LLM features, mentally substitute "NVIDIA NIM" — the architectural roles are identical, only the provider and model names changed (see §3 AI/ML and §6a). The new key manager (`NimKeyManager`) additionally tracks per-key *credit exhaustion* (NIM credits are lifetime, not refilled) and supports **fallback-model-before-rotate**, plus a Mongo-backed LLM response cache.
+> The LLM stack migrated from **Groq → NVIDIA NIM** (`build.nvidia.com`). All chat / notes / translation calls now use NIM's OpenAI-compatible endpoint. Image generation was added (FLUX.1-schnell, SD3-medium fallback). **Whisper transcription remains on Groq** (NIM does not offer a hosted Whisper endpoint — only a downloadable container). The `NimKeyManager` tracks per-key *credit exhaustion* (NIM credits are lifetime, not refilled) and supports **fallback-model-before-rotate**, plus a Mongo-backed LLM response cache.
+>
+> ### Groq Whisper Rate Limits (Verified May 2026)
+> The Groq Whisper free tier provides: **20 RPM** · **2,000 RPD** · **7,200 ASH** (audio seconds/hour) · **28,800 ASD** (audio seconds/day) · **25 MB** max file size. Limits are **organization-level** (multiple API keys do NOT multiply quota). See `docs/implementation_plan.md` for full analysis.
 
 ---
 
@@ -100,7 +103,7 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
 - **NVIDIA NIM Mistral Small 24B** (`mistralai/mistral-small-24b-instruct`) — fast-tier fallback
 - **NVIDIA NIM FLUX.1-schnell** (`black-forest-labs/flux.1-schnell`) — image generation primary (4-step distilled, ~1s, low credit cost)
 - **NVIDIA NIM Stable Diffusion 3 Medium** (`stabilityai/stable-diffusion-3-medium`) — image-gen fallback
-- **Groq Whisper** (`whisper-large-v3-turbo`) — speech-to-text transcription (kept on Groq; not migrated to NIM)
+- **Groq Whisper** (`whisper-large-v3-turbo`) — speech-to-text transcription (kept on Groq; NIM Whisper is self-host only, no free API endpoint). Free tier: 20 RPM / 2,000 RPD / 28,800 ASD. Org-level limits — key rotation does NOT multiply quota.
 - **Local hash-based embeddings** — 384-dim vector embeddings for RAG (zero API calls)
 - **NIM Key Rotation** — round-robin pool with rate-limit cooldown + permanent credit-exhaustion tracking, fallback-model-before-rotate, Mongo-backed TTL response cache
 
@@ -309,26 +312,23 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
 
 ---
 
-## 6a. Groq Key Rotation System
+### 6a. NIM Key Rotation System
 
-TubeToMD uses a **circular queue key manager** for resilient Groq API access:
+TubeToMD uses a **circular queue key manager** (`NimKeyManager`) for resilient NVIDIA NIM API access (LLM + image gen). **Note:** Groq Whisper uses a single API key — Groq's rate limits are org-level, so key rotation is ineffective for Whisper.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                   GroqKeyManager (Singleton)                 │
+│                   NimKeyManager (Singleton)                 │
 ├─────────────────────────────────────────────────────────────┤
-│  keys: GroqKey[]            ← loaded from GROQ_API_KEY +    │
-│                                GROQ_API_KEYS env vars       │
+│  keys: NimKey[]             ← loaded from NVIDIA_API_KEYS   │
 │  currentIndex: number       ← round-robin pointer           │
-│  clientCache: Map<string, Groq>                              │
+│  clientCache: Map<string, NimClient>                         │
 ├─────────────────────────────────────────────────────────────┤
-│  getClient()        → next active key → Groq client          │
-│  markExhausted(key) → parses retry-after, sets refill timer │
+│  getClient()        → next active key → NIM client          │
+│  markExhausted(key) → sets retry timer                     │
 │  addKey() / removeKey() / getStatus()                       │
 ├─────────────────────────────────────────────────────────────┤
 │  Background: setInterval(reactivateKeys, 10s)               │
-│    → checks each exhausted key's refillAt vs now            │
-│    → reactivates keys whose window has elapsed              │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -340,13 +340,11 @@ TubeToMD uses a **circular queue key manager** for resilient Groq API access:
 | `llama-3.1-8b-instant` | 14,400 | Translation (bulk tasks) |
 
 **Flow:**
-1. `callGroq(prompt, model)` gets the next key via round-robin
+1. `callNIM(prompt, model)` gets the next key via round-robin
 2. On success → return result
-3. On 429/RATE_LIMITED → `markExhausted(key, error)` parses retry-after seconds, sets `refillAt`, tries next key
+3. On 429/RATE_LIMITED → `markExhausted(key)` sets `refillAt`, tries next key
 4. If all keys exhausted → throws error with estimated wait time
 5. Background timer (every 10s) reactivates keys whose refill window has passed
-
-**Admin endpoints** allow runtime key management without server restart.
 
 ---
 
@@ -394,7 +392,7 @@ User asks question
     → Backend generates local embedding for question
     → MongoDB Atlas Vector Search finds top-K relevant transcript chunks
     → Backend constructs prompt: system context + relevant chunks + user question
-    → Groq Llama 70B generates answer with citations
+    → NVIDIA NIM Llama 70B generates answer with citations
     → Response includes answer + source timestamps
     → Frontend shows answer with clickable timestamp links
 ```
@@ -404,7 +402,7 @@ User asks question
 User selects type (summary/mindmap/flowchart/etc.) + optional persona + optional time range
     → Backend fetches transcript (full or filtered by time range)
     → Backend constructs specialized prompt based on type + persona
-    → Groq Llama 70B generates structured Markdown / Mermaid code
+    → NVIDIA NIM Llama 70B generates structured Markdown / Mermaid code
     → Backend stores Note in database
     → Frontend renders the note (Markdown / Mermaid diagram)
     → User can edit, re-generate, or export
@@ -648,11 +646,31 @@ frontend/
 
 ## 13. Deployment Notes
 
-- Each service (Frontend, Backend, Python) will be deployed separately
-- Frontend → Vercel / Netlify
-- Backend → Railway / Render / AWS
-- Python → Railway / Render / AWS (no GPU needed — uses Groq Whisper API)
-- MongoDB → MongoDB Atlas (managed)
-- No persistent file storage needed (transcripts stored in MongoDB, audio chunks are ephemeral)
+### Target: HuggingFace Spaces (Free Tier) + MongoDB Atlas
+
+- **Backend (Node.js)** → HuggingFace Space (Docker SDK, port 7860)
+- **Python (FastAPI)** → HuggingFace Space (Docker SDK, port 7860)
+- **Frontend** → Vercel / Netlify (static SPA) or 3rd HF Space
+- **MongoDB** → MongoDB Atlas (managed, free M0 tier)
+- **AI (LLM + Image)** → NVIDIA NIM (remote API, no local compute)
+- **Transcription** → Groq Whisper API (remote API, no local compute)
+
+### HuggingFace Free Tier Resources
+
+| Resource | Limit |
+|----------|-------|
+| CPU | 2 vCPUs |
+| RAM | 16 GB |
+| Disk | 50 GB (ephemeral) |
+| GPU | None (ZeroGPU requires Gradio SDK, not Docker) |
+
+Both backends are **pure API gateways** — they call remote AI services (NIM + Groq) and don't run any models locally. The 2-vCPU / 16 GB free tier is more than sufficient.
+
+### Key Deployment Considerations
+
+- `PYTHON_SERVICE_URL` in the Node.js Space must point to the Python Space's public URL (e.g., `https://<user>-tubetomd-python.hf.space`)
+- All secrets (API keys, JWT secrets, MongoDB URI) set via HF Space settings
+- Disk is ephemeral — no persistent file storage needed (transcripts in MongoDB, audio chunks are temporary)
+- Groq Whisper free tier supports **~30 daily video uploaders** before hitting the 28,800 ASD wall
 
 ---

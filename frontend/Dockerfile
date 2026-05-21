@@ -1,29 +1,40 @@
+# ──────────────────────────────────────────────────────────────
+# TubeToMD Frontend — Production Dockerfile
+# ──────────────────────────────────────────────────────────────
+# Used by: docker-compose.prod.yml
+# Features: Multi-stage build, Nginx for serving, SPA routing
+#
+# Build arg VITE_API_URL controls the backend API URL baked
+# into the static bundle at build time.
+# ──────────────────────────────────────────────────────────────
+
+# ── Build Stage ───────────────────────────────────────────────
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy configuration and install dependencies
-COPY package*.json ./
-RUN npm install
+# Build arg — backend API URL (baked into static JS at build time)
+ARG VITE_API_URL=http://localhost:3000/api
+ENV VITE_API_URL=$VITE_API_URL
 
-# Copy source code and build
+COPY package*.json ./
+RUN npm ci
+
 COPY . .
 RUN npm run build
 
-# Nginx stage for serving static files
+# ── Nginx Stage ───────────────────────────────────────────────
 FROM nginx:alpine
 
 # Remove default nginx static assets
 RUN rm -rf /usr/share/nginx/html/*
 
-# Copy built assets from builder stage
+# Copy built SPA from builder
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Add custom nginx configuration for SPA routing
+# SPA routing config (all routes → index.html)
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Exposed port
 EXPOSE 80
 
-# Start nginx
 CMD ["nginx", "-g", "daemon off;"]

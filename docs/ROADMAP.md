@@ -158,6 +158,48 @@
 
 ---
 
+## 🟤 Phase 5: HuggingFace Deployment & Whisper Hardening (Planned)
+
+> *Target: Deploy both backends to HuggingFace Spaces free tier. Harden Groq Whisper for production reliability.*
+
+### 11. HuggingFace Spaces Deployment
+- **Goal:** Deploy Node.js backend and Python FastAPI as two separate Docker-based HF Spaces.
+- **Tasks:**
+  - [ ] Create HF Space 1 (Docker SDK) for Node.js Express backend.
+  - [ ] Create HF Space 2 (Docker SDK) for Python FastAPI.
+  - [ ] Update both Dockerfiles to expose port 7860 (HF requirement).
+  - [ ] Set `PYTHON_SERVICE_URL` in Space 1 to Space 2's public URL.
+  - [ ] Configure all secrets (API keys, JWT, MongoDB URI) in HF Space settings.
+  - [ ] Test cross-space communication (backend → Python transcription).
+  - [ ] Deploy frontend to Vercel/Netlify or 3rd HF Space.
+- **Status:** Planned
+- **Comments/Reviews:**
+  - *HF free tier provides 2 vCPUs + 16 GB RAM + 50 GB ephemeral disk. Both backends are pure API gateways (no local models), so resources are sufficient.*
+
+### 12. Groq Whisper Hardening
+- **Goal:** Make Whisper transcription resilient to Groq free tier constraints (20 RPM / 2,000 RPD / 28,800 ASD).
+- **Tasks:**
+  - [ ] Add retry logic with exponential backoff in `whisper_service.py` for transient 500 errors.
+  - [ ] Implement RPM throttling — stagger chunk submissions (3-second gaps) instead of parallel bursts.
+  - [ ] Monitor `x-ratelimit-remaining` response headers to preemptively slow down.
+  - [ ] Sequential chunk processing with configurable concurrency (default: 1 for free tier).
+  - [ ] User-facing queue when rate-limited instead of hard failure.
+- **Status:** Planned
+- **Comments/Reviews:**
+  - *Groq Whisper rate limits are org-level — key rotation does NOT multiply quota. Current code has no retry logic and sends chunks in parallel, which can easily burst past 20 RPM with concurrent users.*
+
+### 13. Multi-Provider Transcription Fallback (Future)
+- **Goal:** Add fallback transcription providers in case Groq hits limits or becomes unavailable.
+- **Tasks:**
+  - [ ] Evaluate HuggingFace Inference Providers (DeepInfra, Replicate) as Whisper fallbacks.
+  - [ ] Evaluate Cloudflare Workers AI (`@cf/openai/whisper`) as edge-based fallback.
+  - [ ] Implement provider abstraction layer in `whisper_service.py`.
+- **Status:** Planned
+- **Comments/Reviews:**
+  - *Not urgent — Groq supports ~30 daily uploaders of 15-min videos before hitting ASD limit. Only needed if app gains significant traction.*
+
+---
+
 ## 📝 General Project Notes
 - **Design System:** All new components *must* conform to the "Nocturne Rose" dark-glass aesthetic established in `index.css`.
 - **Error Handling:** Backend errors should seamlessly trigger `toast.error()` via Axios interceptors.

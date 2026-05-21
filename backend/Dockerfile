@@ -1,31 +1,44 @@
+# ──────────────────────────────────────────────────────────────
+# TubeToMD Backend — Production Dockerfile
+# ──────────────────────────────────────────────────────────────
+# Used by: docker-compose.prod.yml, HuggingFace Spaces
+# Features: Multi-stage build, production deps only, small image
+#
+# Supports dynamic PORT via environment variable:
+#   - docker-compose.prod.yml → PORT=3000
+#   - HuggingFace Spaces      → PORT=7860
+# ──────────────────────────────────────────────────────────────
+
+# ── Build Stage ───────────────────────────────────────────────
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
-# Copy source code
 COPY . .
-
-# Build TypeScript code
 RUN npm run build
 
-# Production stage
+# ── Production Stage ──────────────────────────────────────────
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy only package files and install production dependencies
+# Create uploads directory (cross-platform safe)
+RUN mkdir -p /app/uploads
+
+# Install production dependencies only
 COPY package*.json ./
-RUN npm install --production
+RUN npm ci --omit=dev && npm cache clean --force
 
 # Copy built code from builder
 COPY --from=builder /app/dist ./dist
 
-# Exposed port
-EXPOSE 3000
+# Default port (overridden by env in compose/HF)
+ENV PORT=3000
 
-# Start command
+# Expose both possible ports
+EXPOSE 3000 7860
+
 CMD ["node", "dist/index.js"]

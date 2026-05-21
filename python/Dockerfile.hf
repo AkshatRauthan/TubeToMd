@@ -1,0 +1,39 @@
+# ──────────────────────────────────────────────────────────────
+# TubeToMD Python Service — HuggingFace Spaces Dockerfile
+# ──────────────────────────────────────────────────────────────
+# Deploy as standalone HF Space (Docker SDK, port 7860)
+#
+# Setup:
+#   1. Create HF Space with Docker SDK
+#   2. Copy this file as "Dockerfile" in the Space repo
+#   3. Copy the python/ directory contents alongside it
+#   4. Set secrets in HF Space settings (see below)
+#
+# Required HF Space Secrets:
+#   GROQ_API_KEY
+#
+# Optional HF Space Secrets:
+#   MAX_FILE_SIZE_MB (default: 500)
+# ──────────────────────────────────────────────────────────────
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /app/uploads
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt && \
+    rm -rf /root/.cache/pip
+
+COPY . .
+
+# HuggingFace requires port 7860
+ENV PORT=7860
+EXPOSE 7860
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]

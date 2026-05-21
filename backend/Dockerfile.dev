@@ -1,0 +1,25 @@
+# ──────────────────────────────────────────────────────────────
+# TubeToMD Backend — Development Dockerfile
+# ──────────────────────────────────────────────────────────────
+# Used by: docker-compose.yml (local development)
+# Features: ts-node-dev hot-reload, source maps, path aliases
+# ──────────────────────────────────────────────────────────────
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies (cached layer)
+COPY package*.json ./
+RUN npm install
+
+# Copy config files needed for ts-node-dev
+COPY tsconfig.json ./
+
+# Source code is volume-mounted from host for hot-reload
+# (see docker-compose.yml volumes section)
+
+EXPOSE 5000
+
+# Development server with hot-reload
+CMD ["npx", "ts-node-dev", "--respawn", "--require", "tsconfig-paths/register", "--project", "tsconfig.json", "src/index.ts"]
