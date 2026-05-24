@@ -90,18 +90,6 @@ function extractYouTubeId(url: string): string | null {
     return null;
 }
 
-function normalizeYouTubeUrl(url?: string): string | null {
-    if (!url) return null;
-    const trimmed = url.trim();
-    if (!trimmed) return null;
-    if (/^https?:\/\//i.test(trimmed)) return trimmed;
-    const id = extractYouTubeId(trimmed);
-    if (id) return `https://www.youtube.com/watch?v=${id}`;
-    if (trimmed.length === 11 && /^[\w-]+$/.test(trimmed)) {
-        return `https://www.youtube.com/watch?v=${trimmed}`;
-    }
-    return trimmed;
-}
 
 function formatTime(seconds: number) {
     const m = Math.floor(seconds / 60);
