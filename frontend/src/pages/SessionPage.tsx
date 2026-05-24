@@ -241,10 +241,6 @@ export function SessionPage() {
         () => (session?.videoUrl ? extractYouTubeId(session.videoUrl) : null),
         [session?.videoUrl]
     );
-    const youtubeUrl = useMemo(
-        () => normalizeYouTubeUrl(session?.videoUrl || undefined) || (youtubeVideoId ? `https://www.youtube.com/watch?v=${youtubeVideoId}` : null),
-        [session?.videoUrl, youtubeVideoId]
-    );
 
     // ─── Data Fetching ───────────────────────────────────────────
 

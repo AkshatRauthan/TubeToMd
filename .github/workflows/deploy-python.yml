@@ -25,4 +25,4 @@ jobs:
           mv python/Dockerfile.hf python/Dockerfile
           
           # Upload directly via HF Hub API
-          huggingface-cli upload $HF_PYTHON_SPACE ./python . --repo-type space --token $HF_TOKEN
+          hf upload $HF_PYTHON_SPACE ./python . --repo-type space --token $HF_TOKEN

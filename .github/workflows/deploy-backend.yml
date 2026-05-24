@@ -22,4 +22,4 @@ jobs:
           HF_BACKEND_SPACE: ${{ secrets.HF_BACKEND_SPACE }}
         run: |
           # Upload directly via HF Hub API
-          huggingface-cli upload $HF_BACKEND_SPACE ./backend . --repo-type space --token $HF_TOKEN
+          hf upload $HF_BACKEND_SPACE ./backend . --repo-type space --token $HF_TOKEN
