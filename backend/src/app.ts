@@ -23,6 +23,11 @@ app.use('/api', globalLimiter);
 // Serve generated images and other uploads
 app.use('/uploads', express.static(path.resolve(serverConfig.UPLOAD_DIR)));
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
 app.use('/api', apiRoutes);
 
 app.use(errorHandler);
