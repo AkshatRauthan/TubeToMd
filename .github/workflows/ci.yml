@@ -2,9 +2,9 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "TubeToMD-Dev", "TubeToMD-Prod" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "TubeToMD-Dev", "TubeToMD-Prod" ]
 
 jobs:
   test-frontend:
