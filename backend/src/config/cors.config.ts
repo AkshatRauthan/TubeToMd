@@ -8,10 +8,12 @@ const corsOptions: CorsOptions = {
             'http://localhost:5173',
         ];
         if (process.env.FRONTEND_URL) {
-            allowedOrigins.push(process.env.FRONTEND_URL);
+            const urls = process.env.FRONTEND_URL.split(',').map(u => u.trim().replace(/\/$/, ''));
+            allowedOrigins.push(...urls);
         }
-
-        if (!origin || localhostRegex.test(origin) || allowedOrigins.includes(origin)) {
+        const vercelRegex = /^https:\/\/.*\.vercel\.app$/;
+        
+        if (!origin || localhostRegex.test(origin) || vercelRegex.test(origin) || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
             callback(new Error('Not allowed by CORS'));
@@ -20,4 +22,3 @@ const corsOptions: CorsOptions = {
 };
 
 export default cors(corsOptions);
-// Testing CI/CD Pipeline
