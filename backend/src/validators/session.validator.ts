@@ -9,11 +9,14 @@ export const createYouTubeSessionSchema = z.object({
     endTime: z.number().min(0).optional(),
 });
 
+import serverConfig from '@config/server.config';
+
 export const initUploadSessionSchema = z.object({
     filename: z.string().min(1, 'filename is required'),
     totalChunks: z.number().int().min(1).max(120),
     title: z.string().max(200).optional(),
-    duration: z.number().min(0).optional(),
+    duration: z.number().min(0).max(serverConfig.MAX_VIDEO_DURATION_SECONDS, `Video duration cannot exceed ${serverConfig.MAX_VIDEO_DURATION_SECONDS} seconds`).optional(),
+    checksum: z.string().min(8, 'checksum is required for deduplication').max(128).optional(),
 });
 
 export const updateSessionSchema = z.object({

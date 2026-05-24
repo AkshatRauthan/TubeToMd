@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.routes.health import router as health_router
 from app.routes.transcription import router as transcription_router
+from app.routes.admin import router as admin_router
 
 # Configure logging
 logging.basicConfig(
@@ -60,13 +61,16 @@ async def log_requests(request: Request, call_next):
 # Routes
 app.include_router(health_router)
 app.include_router(transcription_router)
+app.include_router(admin_router)
 
 
 @app.on_event("startup")
 async def startup_event():
+    from app.services.groq_key_manager import groq_key_manager
     logger.info(f"🚀 TubeToMD Transcription Service starting on port {settings.PORT}")
     logger.info(f"📝 Whisper model: {settings.WHISPER_MODEL}")
     logger.info(f"📂 Upload directory: {settings.UPLOAD_DIR}")
+    logger.info(f"🔑 Groq API keys loaded: {groq_key_manager.get_total_keys()}")
 
 
 if __name__ == "__main__":

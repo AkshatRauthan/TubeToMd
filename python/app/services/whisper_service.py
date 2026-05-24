@@ -1,7 +1,6 @@
 import os
 import tempfile
 from typing import Optional
-from groq import Groq
 from app.config import settings
 from app.models.schemas import (
     TranscriptSegment,
@@ -11,20 +10,7 @@ from app.models.schemas import (
 from app.utils.audio import extract_audio, get_audio_duration
 
 
-# Groq client — initialized once
-_client = None
-
-
-def get_groq_client() -> Groq:
-    """Lazy-load Groq client"""
-    global _client
-    if _client is None:
-        api_key = settings.GROQ_API_KEY
-        if not api_key:
-            raise RuntimeError("GROQ_API_KEY is not set in the environment")
-        _client = Groq(api_key=api_key)
-        print("✅ Groq Whisper client initialized")
-    return _client
+from app.services.groq_key_manager import groq_key_manager
 
 
 async def transcribe_chunk(
@@ -41,19 +27,41 @@ async def transcribe_chunk(
     try:
         duration = get_audio_duration(file_path)
 
-        client = get_groq_client()
+        max_retries = max(1, groq_key_manager.get_total_keys())
+        result = None
+        last_error = None
+        
+        for attempt in range(max_retries):
+            try:
+                client, key = groq_key_manager.get_client()
 
-        # Open file and send to Groq Whisper API
-        with open(file_path, "rb") as audio_file:
-            kwargs = {
-                "file": (os.path.basename(file_path), audio_file),
-                "model": "whisper-large-v3-turbo",
-                "response_format": "verbose_json",
-            }
-            if language:
-                kwargs["language"] = language
+                # Open file and send to Groq Whisper API
+                with open(file_path, "rb") as audio_file:
+                    kwargs = {
+                        "file": (os.path.basename(file_path), audio_file),
+                        "model": "whisper-large-v3-turbo",
+                        "response_format": "verbose_json",
+                    }
+                    if language:
+                        kwargs["language"] = language
 
-            result = client.audio.transcriptions.create(**kwargs)
+                    result = client.audio.transcriptions.create(**kwargs)
+                    break # Success!
+
+            except Exception as e:
+                error_str = str(e).lower()
+                last_error = e
+                if "429" in error_str or "rate limit" in error_str or "too many requests" in error_str:
+                    # Try to extract retry-after if present, default to 65s
+                    groq_key_manager.mark_exhausted(key, retry_after=65)
+                    if attempt == max_retries - 1:
+                        raise RuntimeError("All Groq API keys exhausted.") from e
+                    continue # Try next key
+                else:
+                    raise e
+                    
+        if result is None and last_error is not None:
+            raise last_error
 
         # Build segments with offset-adjusted timestamps
         segments = []
@@ -126,18 +134,39 @@ async def transcribe_uploaded_file(
         duration = get_audio_duration(audio_path)
 
         # Transcribe with Groq Whisper API
-        client = get_groq_client()
+        max_retries = max(1, groq_key_manager.get_total_keys())
+        result = None
+        last_error = None
+        
+        for attempt in range(max_retries):
+            try:
+                client, key = groq_key_manager.get_client()
 
-        with open(audio_path, "rb") as audio_file:
-            kwargs = {
-                "file": (os.path.basename(audio_path), audio_file),
-                "model": "whisper-large-v3-turbo",
-                "response_format": "verbose_json",
-            }
-            if language:
-                kwargs["language"] = language
+                with open(audio_path, "rb") as audio_file:
+                    kwargs = {
+                        "file": (os.path.basename(audio_path), audio_file),
+                        "model": "whisper-large-v3-turbo",
+                        "response_format": "verbose_json",
+                    }
+                    if language:
+                        kwargs["language"] = language
 
-            result = client.audio.transcriptions.create(**kwargs)
+                    result = client.audio.transcriptions.create(**kwargs)
+                    break # Success!
+
+            except Exception as e:
+                error_str = str(e).lower()
+                last_error = e
+                if "429" in error_str or "rate limit" in error_str or "too many requests" in error_str:
+                    groq_key_manager.mark_exhausted(key, retry_after=65)
+                    if attempt == max_retries - 1:
+                        raise RuntimeError("All Groq API keys exhausted.") from e
+                    continue # Try next key
+                else:
+                    raise e
+                    
+        if result is None and last_error is not None:
+            raise last_error
 
         # Build transcript segments
         segments = []

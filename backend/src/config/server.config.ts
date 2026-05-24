@@ -29,6 +29,7 @@ interface ServerConfig {
     FRONTEND_URL: string;
     UPLOAD_DIR: string;
     ADMIN_API_TOKEN: string;
+    MAX_VIDEO_DURATION_SECONDS: number;
 }
 
 const serverConfig: ServerConfig = {
@@ -58,6 +59,7 @@ const serverConfig: ServerConfig = {
     FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
     UPLOAD_DIR: process.env.UPLOAD_DIR || './uploads',
     ADMIN_API_TOKEN: process.env.ADMIN_API_TOKEN || '',
+    MAX_VIDEO_DURATION_SECONDS: parseInt(process.env.MAX_VIDEO_DURATION_SECONDS || '900', 10),
 };
 
 export default serverConfig;

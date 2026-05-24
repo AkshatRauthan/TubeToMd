@@ -366,7 +366,7 @@ User enters YT URL
 
 ### 7.2 Uploaded Video Flow (Chunk-Based Pipeline)
 ```
-User selects video file (max 512MB / 60 min)
+User selects video file (max 512MB / 15 min)
     → Frontend loads FFmpeg.wasm in browser
     → FFmpeg.wasm extracts audio (mono 16kHz WAV) — zero video on backend
     → Frontend splits audio into ~5 min chunks

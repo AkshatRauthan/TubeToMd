@@ -9,7 +9,7 @@ import type { ApiResponse } from '@/types';
 // ──────────────────────────────────────────────
 
 const MAX_FILE_SIZE = 512 * 1024 * 1024; // 512 MB
-const MAX_DURATION = 3600; // 1 hour in seconds
+const MAX_DURATION = parseInt(import.meta.env.VITE_MAX_VIDEO_DURATION_SECONDS || '1800', 10);
 const CHUNK_DURATION = 300; // 5 minutes in seconds
 
 // ──────────────────────────────────────────────
@@ -21,6 +21,7 @@ export interface ProcessingState {
     stage:
         | 'idle'
         | 'loading-ffmpeg'
+        | 'hashing'
         | 'extracting-audio'
         | 'chunking'
         | 'uploading'
@@ -39,6 +40,8 @@ export interface ProcessingState {
     sessionId: string | null;
     /** Error message if stage === 'error' */
     error: string | null;
+    /** True if this file was already processed (duplicate) */
+    isDuplicate: boolean;
 }
 
 const INITIAL_STATE: ProcessingState = {
@@ -49,6 +52,7 @@ const INITIAL_STATE: ProcessingState = {
     totalChunks: 0,
     sessionId: null,
     error: null,
+    isDuplicate: false,
 };
 
 // ──────────────────────────────────────────────
@@ -63,8 +67,8 @@ async function getFFmpeg(): Promise<FFmpeg> {
 
     ffmpegInstance = new FFmpeg();
 
-    // Load FFmpeg WASM from CDN
-    const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+    // Claude's recommendation: use UMD build with toBlobURL
+    const baseURL = window.location.origin + '/ffmpeg';
     await ffmpegInstance.load({
         coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
         wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
@@ -102,7 +106,7 @@ export function useVideoProcessor() {
     }, []);
 
     /**
-     * Main pipeline: validate → extract audio → chunk → upload → complete.
+     * Main pipeline: validate → hash → extract audio → chunk → upload → complete.
      * Returns the session ID on success, or null on failure.
      */
     const processVideo = useCallback(
@@ -111,12 +115,17 @@ export function useVideoProcessor() {
             setState(INITIAL_STATE);
 
             try {
-                // ── Validate ──
+                // ── Validate file size ──
                 if (file.size > MAX_FILE_SIZE) {
                     throw new Error(
                         `File too large (${(file.size / 1024 / 1024).toFixed(0)} MB). Max is 512 MB.`
                     );
                 }
+
+                // ── Compute SHA-256 checksum for deduplication ──
+                update({ stage: 'hashing', message: 'Computing file checksum...', progress: 2 });
+                const checksum = await computeChecksum(file);
+                if (abortRef.current) return null;
 
                 // ── Load FFmpeg ──
                 update({ stage: 'loading-ffmpeg', message: 'Loading FFmpeg...', progress: 5 });
@@ -153,7 +162,7 @@ export function useVideoProcessor() {
 
                 if (duration > MAX_DURATION) {
                     throw new Error(
-                        `Video is too long (${Math.ceil(duration / 60)} min). Max is 60 min.`
+                        `Video is too long (${Math.ceil(duration / 60)} min). Max is 15 min.`
                     );
                 }
 
@@ -169,16 +178,34 @@ export function useVideoProcessor() {
                 // ── Calculate chunks ──
                 const totalChunks = Math.ceil(duration / CHUNK_DURATION);
 
-                // ── Init upload session on backend ──
+                // ── Init upload session on backend (with checksum) ──
                 const initRes = await api.post<
-                    ApiResponse<{ sessionId: string; totalChunks: number }>
+                    ApiResponse<{ sessionId: string; totalChunks: number; isDuplicate: boolean; existingStatus?: string }>
                 >('/sessions/upload/init', {
                     filename: file.name,
                     totalChunks,
                     title: title || file.name,
                     duration,
+                    checksum,
                 });
+
                 const sessionId = initRes.data.data.sessionId;
+                const isDuplicate = initRes.data.data.isDuplicate;
+
+                // ── If duplicate detected, skip upload entirely ──
+                if (isDuplicate) {
+                    // Clean up FFmpeg FS
+                    try { await ffmpeg.deleteFile(audioName); } catch { /* ignore */ }
+
+                    update({
+                        stage: 'done',
+                        message: 'This file was already processed! Opening existing session.',
+                        progress: 100,
+                        sessionId,
+                        isDuplicate: true,
+                    });
+                    return sessionId;
+                }
 
                 update({
                     stage: 'uploading',
@@ -192,53 +219,6 @@ export function useVideoProcessor() {
                 // We split into WAV chunks, upload each, then delete from FS (GC).
                 const CONCURRENCY = 3; // parallel uploads
                 let uploaded = 0;
-
-                // @ts-expect-error – used in the chunking loop below
-                const uploadChunk = async (index: number) => {
-                    if (abortRef.current) return;
-
-                    const startSec = index * CHUNK_DURATION;
-                    const chunkName = `chunk_${index}.wav`;
-
-                    // Extract chunk from full audio
-                    await ffmpeg.exec([
-                        '-i', audioName,
-                        '-ss', String(startSec),
-                        '-t', String(CHUNK_DURATION),
-                        '-acodec', 'pcm_s16le',
-                        '-ar', '16000',
-                        '-ac', '1',
-                        '-y',
-                        chunkName,
-                    ]);
-
-                    // Read chunk data
-                    const chunkData = await ffmpeg.readFile(chunkName);
-                    const chunkBlob = new Blob([new Uint8Array(chunkData as Uint8Array)], { type: 'audio/wav' });
-
-                    // Delete chunk from FFmpeg FS immediately (garbage collection)
-                    await ffmpeg.deleteFile(chunkName);
-
-                    // Upload to backend
-                    const formData = new FormData();
-                    formData.append('chunk', chunkBlob, `chunk_${index}.wav`);
-                    formData.append('session_id', sessionId);
-                    formData.append('chunk_index', String(index));
-                    formData.append('chunk_offset', String(startSec));
-
-                    await api.post('/sessions/upload/chunk', formData, {
-                        headers: { 'Content-Type': 'multipart/form-data' },
-                        timeout: 300000, // 5 min per chunk
-                    });
-
-                    uploaded++;
-                    const progressPct = 30 + Math.round((uploaded / totalChunks) * 60);
-                    update({
-                        chunksUploaded: uploaded,
-                        message: `Uploading ${uploaded}/${totalChunks} chunks...`,
-                        progress: progressPct,
-                    });
-                };
 
                 // Process chunks with concurrency limit
                 // We need sequential FFmpeg operations (single-threaded WASM),
@@ -337,7 +317,15 @@ export function useVideoProcessor() {
 
                 return sessionId;
             } catch (err: any) {
-                const msg = err.response?.data?.message || err.message || 'Processing failed';
+                console.error("Video processing error:", err);
+                let msg = 'Processing failed';
+                if (typeof err === 'string') {
+                    msg = err;
+                } else if (err.response?.data?.message) {
+                    msg = err.response.data.message;
+                } else if (err.message) {
+                    msg = err.message;
+                }
                 update({ stage: 'error', error: msg, message: msg });
                 return null;
             }
@@ -372,4 +360,36 @@ function getAudioDuration(blob: Blob): Promise<number> {
         };
         audio.src = url;
     });
+}
+
+/**
+ * Compute SHA-256 checksum of a File using the Web Crypto API.
+ * Reads the file in 2MB chunks to avoid out-of-memory on large files.
+ */
+async function computeChecksum(file: File): Promise<string> {
+    // For files under 50 MB, hash the entire thing
+    // For larger files, hash first 10 MB + last 10 MB + file size for speed
+    const FULL_HASH_THRESHOLD = 50 * 1024 * 1024; // 50 MB
+
+    let buffer: ArrayBuffer;
+
+    if (file.size <= FULL_HASH_THRESHOLD) {
+        buffer = await file.arrayBuffer();
+    } else {
+        // Partial hash: first 10 MB + last 10 MB + file size encoded
+        const PARTIAL_SIZE = 10 * 1024 * 1024;
+        const first = await file.slice(0, PARTIAL_SIZE).arrayBuffer();
+        const last = await file.slice(file.size - PARTIAL_SIZE).arrayBuffer();
+        const sizeBytes = new TextEncoder().encode(String(file.size));
+
+        const combined = new Uint8Array(first.byteLength + last.byteLength + sizeBytes.byteLength);
+        combined.set(new Uint8Array(first), 0);
+        combined.set(new Uint8Array(last), first.byteLength);
+        combined.set(sizeBytes, first.byteLength + last.byteLength);
+        buffer = combined.buffer;
+    }
+
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }

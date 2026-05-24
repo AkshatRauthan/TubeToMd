@@ -14,6 +14,7 @@ export interface ISession extends Document {
     videoPath?: string;
     thumbnailUrl?: string;
     duration?: number;
+    fileChecksum?: string;
     transcription: ITranscriptSegment[];
     status: 'processing' | 'transcribing' | 'transcribed' | 'ready' | 'failed';
     errorMessage?: string;
@@ -67,6 +68,7 @@ const sessionSchema = new Schema<ISession>(
         videoPath: { type: String },
         thumbnailUrl: { type: String },
         duration: { type: Number },
+        fileChecksum: { type: String, index: true, sparse: true },
         transcription: {
             type: [transcriptSegmentSchema],
             default: [],

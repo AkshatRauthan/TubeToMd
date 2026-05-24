@@ -8,8 +8,9 @@ import {
     CreateYouTubeSessionRequest,
     PythonChunkTranscribeResponse,
 } from '@types';
+import serverConfig from "@config/server.config"
 
-/**
+/** 
  * In-memory store for chunk transcription results per session.
  * Maps sessionId → { totalChunks, results[], filename }
  */
@@ -98,19 +99,48 @@ class SessionService {
      * Step 1: Initialize an upload session.
      * Frontend tells us how many chunks to expect.
      * Returns the session ID so chunks can be correlated.
+     * If a checksum is provided and a matching session already exists,
+     * returns the existing session (deduplication).
      */
     async initUploadSession(
         userId: string,
         filename: string,
         totalChunks: number,
         title?: string,
-        duration?: number
-    ): Promise<ISession> {
+        duration?: number,
+        checksum?: string
+    ): Promise<{ session: ISession; isDuplicate: boolean }> {
         if (totalChunks < 1 || totalChunks > 120) {
             throw new CustomError(
                 'totalChunks must be between 1 and 120',
                 StatusCodes.BAD_REQUEST
             );
+        }
+
+        // ── Duration limit from config ──
+        const MAX_UPLOAD_DURATION = serverConfig.MAX_VIDEO_DURATION_SECONDS;
+        if (duration && duration > MAX_UPLOAD_DURATION) {
+            throw new CustomError(
+                `Video duration (${Math.ceil(duration / 60)} min) exceeds the ${Math.ceil(MAX_UPLOAD_DURATION / 60)}-minute limit.`,
+                StatusCodes.BAD_REQUEST
+            );
+        }
+
+        // ── Checksum deduplication ──
+        if (checksum) {
+            const existing = await Session.findOne({
+                userId,
+                fileChecksum: checksum,
+                status: { $nin: ['failed'] },
+            });
+
+            if (existing) {
+                console.log(
+                    `♻️ [upload] Duplicate file detected (checksum: ${checksum.slice(0, 12)}...). ` +
+                    `Returning existing session ${existing._id}.`
+                );
+                return { session: existing, isDuplicate: true };
+            }
         }
 
         const session = await Session.create({
@@ -119,6 +149,7 @@ class SessionService {
             videoType: 'uploaded',
             status: 'processing',
             duration: duration || undefined,
+            fileChecksum: checksum || undefined,
         });
 
         // Initialize chunk tracker
@@ -128,7 +159,7 @@ class SessionService {
             results: new Array(totalChunks).fill(null),
         });
 
-        return session;
+        return { session, isDuplicate: false };
     }
 
     /**

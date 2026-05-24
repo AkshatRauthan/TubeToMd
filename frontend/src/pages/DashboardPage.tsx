@@ -65,10 +65,19 @@ export function DashboardPage() {
 
     useEffect(() => {
         if (uploadState.stage === 'done' && uploadState.sessionId) {
-            toast.success('Upload complete! Session is being processed.');
+            if (uploadState.isDuplicate) {
+                toast.info('File already processed! Opening existing session...');
+            } else {
+                toast.success('Upload complete! Opening session...');
+            }
             fetchSessions();
+            // Auto-navigate to the new session after a brief delay
+            const timer = setTimeout(() => {
+                navigate(`/session/${uploadState.sessionId}`);
+            }, 1500);
+            return () => clearTimeout(timer);
         }
-    }, [uploadState.stage, uploadState.sessionId, uploadState.progress, uploadState.chunksUploaded, fetchSessions]);
+    }, [uploadState.stage, uploadState.sessionId, uploadState.isDuplicate, fetchSessions, navigate]);
 
     const handleYouTubeSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -202,7 +211,7 @@ export function DashboardPage() {
         uploadState.stage !== 'done' &&
         uploadState.stage !== 'error';
 
-    const progressStages = ['loading-ffmpeg', 'extracting-audio', 'chunking', 'uploading', 'completing'];
+    const progressStages = ['loading-ffmpeg', 'hashing', 'extracting-audio', 'chunking', 'uploading', 'completing'];
     const currentStageIdx = progressStages.indexOf(uploadState.stage);
 
     return (
@@ -378,7 +387,7 @@ export function DashboardPage() {
                                         >
                                             <div className="flex items-center gap-2">
                                                 <CheckCircle className="h-5 w-5" />
-                                                <span>Upload complete! Generating notes...</span>
+                                                <span>{uploadState.isDuplicate ? 'File already processed! Opening existing session...' : 'Upload complete! Generating notes...'}</span>
                                             </div>
                                             {uploadState.sessionId && (
                                                 <button

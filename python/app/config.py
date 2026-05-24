@@ -8,6 +8,7 @@ load_dotenv()
 class Settings(BaseSettings):
     PORT: int = 8000
     GROQ_API_KEY: str = ""
+    GROQ_API_KEYS: str = ""
     MAX_FILE_SIZE_MB: int = 500
     UPLOAD_DIR: str = "./uploads"
     WHISPER_MODEL: str = "whisper-large-v3-turbo"

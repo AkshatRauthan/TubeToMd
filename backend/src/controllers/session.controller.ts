@@ -21,12 +21,12 @@ class SessionController {
 
     /**
      * Step 1: Initialize an upload session.
-     * Body: { filename, totalChunks, title?, duration? }
+     * Body: { filename, totalChunks, title?, duration?, checksum? }
      */
     async initUploadSession(req: Request, res: Response, next: NextFunction) {
         try {
             const userId = req.user!._id;
-            const { filename, totalChunks, title, duration } = req.body;
+            const { filename, totalChunks, title, duration, checksum } = req.body;
 
             if (!filename || !totalChunks) {
                 return res.status(StatusCodes.BAD_REQUEST).json({
@@ -35,17 +35,32 @@ class SessionController {
                 });
             }
 
-            const session = await sessionService.initUploadSession(
+            const { session, isDuplicate } = await sessionService.initUploadSession(
                 userId,
                 filename,
                 Number(totalChunks),
                 title,
-                duration ? Number(duration) : undefined
+                duration ? Number(duration) : undefined,
+                checksum || undefined
             );
+
+            if (isDuplicate) {
+                new SuccessResponse(
+                    'Duplicate file detected. Returning existing session.',
+                    {
+                        sessionId: String(session._id),
+                        totalChunks: 0,
+                        isDuplicate: true,
+                        existingStatus: session.status,
+                    },
+                    StatusCodes.OK
+                ).send(res);
+                return;
+            }
 
             new SuccessResponse(
                 'Upload session initialized. Send audio chunks next.',
-                { sessionId: String(session._id), totalChunks: Number(totalChunks) },
+                { sessionId: String(session._id), totalChunks: Number(totalChunks), isDuplicate: false },
                 StatusCodes.CREATED
             ).send(res);
         } catch (error) {
