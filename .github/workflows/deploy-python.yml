@@ -12,9 +12,12 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
 
       - name: Install Hugging Face CLI
-        run: pip install -U "huggingface_hub[cli]"
+        run: pip install -U huggingface_hub
 
       - name: Deploy to Space
         env:
@@ -24,5 +27,5 @@ jobs:
           # Rename Dockerfile.hf to Dockerfile so HF knows how to build it
           mv python/Dockerfile.hf python/Dockerfile
           
-          # Upload directly via HF Hub API
+          # Upload directly via HF Hub API (uses the new 'hf' CLI)
           hf upload $HF_PYTHON_SPACE ./python . --repo-type space --token $HF_TOKEN

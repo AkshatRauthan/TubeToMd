@@ -12,14 +12,17 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
 
       - name: Install Hugging Face CLI
-        run: pip install -U "huggingface_hub[cli]"
+        run: pip install -U huggingface_hub
 
       - name: Deploy to Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_BACKEND_SPACE: ${{ secrets.HF_BACKEND_SPACE }}
         run: |
-          # Upload directly via HF Hub API
+          # Upload directly via HF Hub API (uses the new 'hf' CLI)
           hf upload $HF_BACKEND_SPACE ./backend . --repo-type space --token $HF_TOKEN
