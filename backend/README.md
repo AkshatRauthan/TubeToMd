@@ -1,3 +1,13 @@
+---
+title: TubeToMD Backend
+emoji: 🚀
+colorFrom: pink
+colorTo: purple
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # TubeToMD — Backend Service
 
 > Express 5 + TypeScript REST API for TubeToMD
