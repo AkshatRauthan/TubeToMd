@@ -151,7 +151,9 @@
   - [x] Rate Limiting (Express-rate-limit).
   - [x] Input Validation (Zod).
   - [x] Dockerfiles & `docker-compose.yml`.
-  - [x] Unit Tests (Frontend & Backend).
+  - [x] Unit Tests (Frontend, Backend, and Python).
+  - [x] CI/CD Pipeline (GitHub Actions).
+  - [x] GitHub Codespaces Environment (`.devcontainer`).
 - **Status:** Completed
 - **Comments/Reviews:**
   - *(Add comments here...)*

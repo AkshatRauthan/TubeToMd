@@ -19,10 +19,11 @@ TubeToMD extracts transcripts from YouTube videos (or user-uploaded videos via b
 - **Timestamp Annotations** — Add notes at specific timestamps; hover-to-annotate on transcript lines
 - **Video-Transcript Sync** — Active transcript line highlights as the video plays (250ms polling)
 - **Editable Session Titles** — Inline rename sessions from the session page
-- **Session Deduplication** — Re-opening the same YouTube URL navigates to the existing session
+- **Session Deduplication** — Re-opening the same YouTube URL navigates to the existing session. File uploads are deduplicated in-browser using SHA-256 chunk hashing.
 - **Dashboard with Thumbnails** — Grid tile layout with YouTube thumbnails, duration badges, and status indicators
 - **PDF Report Download** — Comprehensive PDF with title page, TOC, all notes, annotations, and full transcript
 - **NVIDIA NIM Key Rotation** — Circular queue of N API keys with rate-limit cooldown + credit-exhaustion tracking, fallback-model-before-rotate, and Mongo-backed response cache
+- **Groq API Key Rotation** — Unlimited pool of Groq API keys in the Python service with round-robin load balancing and automatic 429 backoff to bypass rate limits
 - **Admin Key Management** — Protected REST endpoints to add/remove/monitor NIM API keys at runtime
 - **JWT Auth + Google OAuth** — Email/password registration with optional Google account linking
 
@@ -106,6 +107,12 @@ npm install
 npm run dev                 # Starts on http://localhost:5173
 ```
 
+### 5. GitHub Codespaces (One-Click Environment)
+
+You can run TubeToMD entirely in the cloud using GitHub Codespaces. It will automatically install all dependencies, configure the environments, and forward the required ports (`5173`, `5000`, `8000`).
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/AkshatRauthan/TubeToMD)
+
 ---
 
 ## Environment Variables
@@ -135,8 +142,9 @@ npm run dev                 # Starts on http://localhost:5173
 | Variable | Description |
 |----------|-------------|
 | `PORT` | Server port (default: `8000`) |
-| `GROQ_API_KEY` | Groq API key (for Whisper transcription) |
-| `MAX_FILE_SIZE_MB` | Max upload file size in MB |
+| `GROQ_API_KEY` | Primary Groq API key (for Whisper transcription) |
+| `GROQ_API_KEYS` | Comma-separated list of additional Groq keys for rotation pool |
+| `MAX_FILE_SIZE_MB` | Max upload file size in MB (default: 500) |
 
 ---
 

@@ -1,0 +1,26 @@
+{
+    "name": "TubeToMD Full-Stack Environment",
+    "image": "mcr.microsoft.com/devcontainers/universal:2",
+    "features": {
+        "ghcr.io/devcontainers/features/node:1": {
+            "version": "20"
+        },
+        "ghcr.io/devcontainers/features/python:1": {
+            "version": "3.11"
+        }
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "dbaeumer.vscode-eslint",
+                "esbenp.prettier-vscode",
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "bradlc.vscode-tailwindcss",
+                "mongodb.mongodb-vscode"
+            ]
+        }
+    },
+    "forwardPorts": [5000, 5173, 8000],
+    "postCreateCommand": "bash .devcontainer/setup.sh"
+}

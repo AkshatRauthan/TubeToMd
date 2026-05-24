@@ -35,10 +35,11 @@
 ### Python Service (FastAPI)
 - [x] **YouTube Transcription** — youtube-transcript-api with multi-format URL parsing
 - [x] **Whisper Transcription** — Groq Whisper API (`whisper-large-v3-turbo`), per-chunk transcription with offset-adjusted timestamps, chunk merge with edge deduplication. Free tier: 20 RPM / 2,000 RPD / 28,800 ASD (org-level limits)
+- [x] **Groq Key Rotation** — Unlimited pool of Groq API keys with round-robin load balancing and automatic 429 backoff to bypass rate limits
 - [x] **Audio Utilities** — FFmpeg audio extraction (16kHz mono WAV), ffprobe duration detection
 - [x] **Chunk Endpoints** — POST /transcribe/chunk (single chunk) + POST /transcribe/merge (merge all chunks)
 - [x] **Health Endpoint** — Service health check
-- [x] **Configuration** — Pydantic Settings, .env support, configurable Whisper model/file size limits (25 MB per request max)
+- [x] **Configuration** — Pydantic Settings, .env support, configurable Whisper model/file size limits (500 MB per request max)
 
 ### Frontend (React 19 + Vite 7 + TailwindCSS v4)
 - [x] **Project Scaffolding** — Vite + React 19 + TypeScript with Tailwind CSS v4
@@ -51,7 +52,8 @@
 - [x] **Session Page** — 3-column layout: video player (left) | transcript (center) | notes/chat (right)
 - [x] **YouTube IFrame API** — `YT.Player` integration for video playback with seekTo/getCurrentTime
 - [x] **Editable Session Titles** — Inline rename via pencil icon on session page
-- [x] **Video Upload Hook** — useVideoProcessor: FFmpeg.wasm loading, audio extraction (mono 16kHz), chunking (~5 min), parallel batch upload (3 concurrent), abort support
+- [x] **Video Upload Hook** — useVideoProcessor: FFmpeg ESM local loading, audio extraction (mono 16kHz), chunking (~5 min), parallel batch upload (3 concurrent), abort support, 30 min duration limit
+- [x] **File Deduplication** — SHA-256 chunk-based file hashing (reads start/end bytes) in browser before upload to prevent redundant processing
 - [x] **Transcript Panel** — Clickable timestamps, auto-scroll toggle, time-synced highlighting (250ms polling), larger fonts (text-base)
 - [x] **Video-Transcript Sync** — Active transcript line highlights based on current video playback position
 - [x] **Timestamp Annotations** — Hover action buttons on transcript lines, annotation popup (add/delete), CRUD via annotation API
@@ -89,12 +91,13 @@
 - [ ] **Sharing** — Share notes/sessions via public link
 - [ ] **Collaboration** — Multi-user annotation on shared sessions
 - [ ] **User Settings Page** — Preferences, default persona, connected accounts
-- [ ] **Rate Limiting** — API rate limiting per user (express-rate-limit)
-- [ ] **Input Validation** — Request body validation (zod)
+- [x] **Rate Limiting** — API rate limiting per user (express-rate-limit) + Global limits
+- [x] **Input Validation** — Request body validation (zod)
 - [ ] **API Documentation** — Swagger/OpenAPI spec
-- [ ] **Docker Support** — Dockerfiles + docker-compose for all services
-- [ ] **CI/CD Pipeline** — GitHub Actions for testing and deployment
-- [ ] **Testing** — Unit tests (Jest) + E2E tests (Playwright)
+- [x] **Docker Support** — Dockerfiles + docker-compose for all services
+- [x] **CI/CD Pipeline** — GitHub Actions (`ci.yml`) for automated testing across all modules
+- [x] **GitHub Codespaces** — `.devcontainer` configuration for one-click cloud development
+- [x] **Testing** — Unit tests and Integration tests (Jest for Node, Vitest for React, Pytest for Python)
 - [ ] **Browser Extension** — Chrome extension for one-click transcription from YouTube
 
 ---

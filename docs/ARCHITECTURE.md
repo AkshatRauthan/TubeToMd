@@ -69,6 +69,7 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
 - **Sonner** — toast notifications
 - **Lucide React** — icon library
 - **Axios** — HTTP client
+- **Vitest** / **React Testing Library** — unit and component testing
 
 ### Node.js Backend
 - **Express 5** + **TypeScript** — REST API
@@ -82,15 +83,17 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
 - **node-cron** — scheduled cleanup tasks
 - **luxon** — date/time formatting
 - **uuid** — unique ID generation
+- **jest** / **supertest** — unit and integration testing
 
 ### Python FastAPI Service
 - **FastAPI** — async REST API
 - **uvicorn** — ASGI server
-- **groq** — Groq Whisper API client (`whisper-large-v3-turbo`)
+- **groq** — Groq Whisper API client (`whisper-large-v3-turbo`) with round-robin key rotation and 429 backoff
 - **youtube-transcript-api** — YouTube transcript fetching
 - **yt-dlp** — YouTube audio extraction
 - **ffmpeg** — audio processing
 - **pydantic** — request/response validation
+- **pytest** / **httpx** — unit and integration testing
 
 ### Database
 - **MongoDB Atlas** — primary database

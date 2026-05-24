@@ -5,7 +5,7 @@
     "main": "dist/index.js",
     "scripts": {
         "dev": "ts-node-dev --respawn --require tsconfig-paths/register --project tsconfig.json src/index.ts",
-        "build": "tsc && tsc-alias",
+        "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
         "start": "node dist/index.js",
         "test": "jest"
     },
