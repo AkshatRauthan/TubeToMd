@@ -7,6 +7,9 @@ const corsOptions: CorsOptions = {
         const allowedOrigins = [
             'http://localhost:5173',
         ];
+        if (process.env.FRONTEND_URL) {
+            allowedOrigins.push(process.env.FRONTEND_URL);
+        }
 
         if (!origin || localhostRegex.test(origin) || allowedOrigins.includes(origin)) {
             callback(null, true);
