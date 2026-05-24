@@ -1,0 +1,24 @@
+name: Keep Hugging Face Spaces Awake
+on:
+  schedule:
+    # Run every 12 hours (at minute 0 past hour 0 and 12) to prevent the 48-hour sleep timeout
+    - cron: '0 0,12 * * *'
+  workflow_dispatch: # Allows you to manually trigger it from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Python Space
+        env:
+          HF_PYTHON_URL: ${{ secrets.HF_PYTHON_URL }}
+        run: |
+          echo "Pinging $HF_PYTHON_URL/health"
+          curl -sSf "$HF_PYTHON_URL/health" || echo "Python space ping failed or timed out"
+
+      - name: Ping Node Backend Space
+        env:
+          HF_BACKEND_URL: ${{ secrets.HF_BACKEND_URL }}
+        run: |
+          echo "Pinging $HF_BACKEND_URL/health"
+          curl -sSf "$HF_BACKEND_URL/health" || echo "Node backend space ping failed or timed out"

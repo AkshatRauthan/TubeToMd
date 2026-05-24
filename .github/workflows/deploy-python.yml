@@ -1,0 +1,28 @@
+name: Deploy Python to Hugging Face
+on:
+  push:
+    branches: [ TubeToMD-Prod ]
+    paths:
+      - 'python/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Hugging Face CLI
+        run: pip install -U "huggingface_hub[cli]"
+
+      - name: Deploy to Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_PYTHON_SPACE: ${{ secrets.HF_PYTHON_SPACE }}
+        run: |
+          # Rename Dockerfile.hf to Dockerfile so HF knows how to build it
+          mv python/Dockerfile.hf python/Dockerfile
+          
+          # Upload directly via HF Hub API
+          huggingface-cli upload $HF_PYTHON_SPACE ./python . --repo-type space --token $HF_TOKEN
