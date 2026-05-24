@@ -1,0 +1,227 @@
+TubeToMD — Full Feature List
+============================
+Generated: 2026-05-08
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. CONTENT INGESTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- YouTube Transcript Extraction      Fetch transcripts from any YouTube URL with timestamps
+- Video File Upload                  Upload MP4, MP3, WebM, M4A, OGG, FLAC, AVI, MKV, MOV, FLV, WMV
+- Browser-Side Audio Extraction      FFmpeg.wasm extracts audio client-side (mono 16 kHz WAV) before upload
+- Groq Whisper Transcription         Whisper large-v3-turbo STT for uploaded files
+- Parallel Chunk Transcription       Up to 3 audio chunks processed concurrently for speed
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. NOTE GENERATION (7 TYPES)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Summary Notes                      Concise overview with key points
+- Detailed Notes                     Comprehensive coverage with all examples and code blocks
+- Mind Maps                          Interactive Mermaid-based visual mind maps
+- Flowcharts                         Process flows rendered as interactive Mermaid diagrams
+- Flashcards                         Question-answer study cards with interactive flip/quiz mode
+- Study Guides                       Resource and learning guides
+- Custom Notes                       User-defined prompt for fully custom note generation
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. SUMMARY PERSONAS (7 STYLES)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Detailed                           Headers, bullet points, code blocks — full coverage
+- Executive                          High-level summary with key takeaways
+- ELI5 (Explain Like I'm 5)          Simple explanations with analogies
+- Code-Heavy                         Focus on code examples and technical implementations
+- Actionable                         Checklist and step-by-step guides
+- Academic                           Formal academic-style notes with proper formatting
+- Custom                             User-defined persona with custom instructions
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. AI-POWERED FEATURES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- RAG-Based Q&A Chat                 Ask questions about video content; answers cite specific timestamps
+- Transcript Translation             Translate transcripts into diffrent languages
+- AI Cover Image Generation          Auto-generate cover illustrations using NVIDIA NIM FLUX.1-schnell
+                                     with Stable Diffusion 3 Medium as fallback
+- Per-User Daily Image Quota         Configurable daily limit (default 5) with optional disable
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. TRANSCRIPT FEATURES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Time-Synced Highlighting           Active transcript line highlights as video plays (250 ms polling)
+- Clickable Timestamps               Click any timestamp to jump to that point in the video
+- Timestamp Annotations              Hover to annotate transcript lines; add/edit/delete notes at timestamps
+- Auto-Scroll Toggle                 Manual control over transcript scroll during playback
+- Transcript Translation             Full transcript translation with restore-original support
+- Time Range Filtering               Retrieve transcript segments for specific time ranges
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. VIDEO PLAYER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- YouTube IFrame Integration         Native YouTube player embedded in session view
+- Video-Transcript Sync              Active transcript line updates as video plays
+- Seek Control                       Click transcript timestamps to seek to specific positions
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7. EXPORT & REPORTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- PDF Report Download                Comprehensive PDF with title page, TOC, summary, detailed notes,
+                                     diagrams, flashcards, study guide, annotations, full transcript,
+                                     and page numbers
+- Markdown Export                    Export notes as .md files
+- HTML Export                        Export notes as styled HTML files
+- Dashboard PDF Download             Generate PDF directly from session tiles on the dashboard
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8. SESSION MANAGEMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Session Deduplication              Re-opening the same YouTube URL navigates to the existing session
+- Editable Session Titles            Inline rename sessions from the session page
+- Session Search                     Search across sessions by title or URL
+- Session Status Tracking            Real-time status indicators (processing, transcribing, ready, failed)
+- Session Deletion                   Remove sessions and all associated data
+- Session Sharing                    Generate public share links with token-based access
+- Revoke Sharing                     Disable public access to a session at any time
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+9. DASHBOARD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Session Grid View                  Tiles with YouTube thumbnails, duration badges, and status indicators
+- Video Upload Interface             Drag-and-drop or file-picker for video uploads
+- Upload Progress Bar                Real-time progress tracking during uploads
+- Quick Actions                      Delete, share, view PDF, open session — all from the dashboard tile
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+10. AUTHENTICATION & USER MANAGEMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Email/Password Registration        Standard sign-up with bcrypt password hashing
+- Email/Password Login               Session-based authentication
+- Google OAuth 2.0                   One-click Google account sign-in
+- Account Linking                    Link or unlink Google accounts to an existing email account
+- Dual Auth Support                  Users can have both local and Google auth methods
+- JWT Access + Refresh Tokens        Short-lived access tokens; long-lived refresh tokens
+- User Profile Management           View and update profile details
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+11. UI & VISUAL FEATURES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Dark Mode Toggle                   Full theme switching between light and dark modes
+- Responsive Design                  Optimized for desktop and mobile
+- Glassmorphism UI                   Frosted-glass aesthetic with backdrop blur and transparency
+- Mermaid Diagram Rendering          Interactive mind maps and flowcharts
+- Framer Motion Animations           Page and component transition animations
+- Toast Notifications                Non-intrusive status feedback via Sonner
+
+
+
+
+// Above Ones aur UI specific and functional requirements...............
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+12. LLM & AI INFRASTRUCTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- NVIDIA NIM Integration             OpenAI-compatible API layer
+- Primary LLM — Llama 3.3 70B       Quality tier for notes, chat, and custom generation
+- Fast LLM — Llama 3.1 8B           Speed tier for translation and structured data
+- Fallback Models                    Nemotron 70B and Mistral Small 24B with intelligent chain
+- Smart Fallback Chain               Quality → Fast → Fallback model progression
+- Multi-Key Pool                     N API keys with round-robin rotation
+- Rate-Limit Handling                Auto cooldown on 429 errors with parsed retry-after headers
+- Credit Exhaustion Tracking         Permanent disabling of keys that return 402 (credits never refill)
+- Background Key Reactivation        10 s interval timer reactivates cooled-down rate-limited keys
+- Runtime Key Management             Add/remove API keys without restarting the server
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+13. LLM RESPONSE CACHING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- MongoDB-Backed TTL Cache           Avoid repeated API calls for identical prompts
+- Operation-Based TTL                Generate Notes: 24 h | Translate: 7 days | Chat: 1 h
+- SHA-256 Cache Keys                 Deterministic keys based on model + operation + prompt
+- Automatic Expiry                   MongoDB TTL index auto-cleans expired entries
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+14. EMBEDDING & RAG
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Local Hash-Based Embeddings        384-dimensional vectors (zero external API cost)
+- MongoDB Atlas Vector Search        Semantic similarity search for Q&A
+- Transcript Chunking                Intelligent segmentation before embedding
+- Text Fallback Search               Full-text search when vector search is unavailable
+- Timestamped Citation               Chat answers cite specific transcript segments with timestamps
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+15. DATA PERSISTENCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- MongoDB Atlas                      Primary cloud database
+- Mongoose 8 ODM                     Schema validation and query abstraction
+- Compound Indexes                   Optimised queries for common access patterns
+- TTL Indexes                        Automatic cleanup of expired cache and temporary data
+- Data Models: Users, Sessions, Notes, Chat Messages, Embeddings,
+               Annotations, Image Quota, LLM Cache
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+16. API & BACKEND
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- REST API (v1 namespace)            Full RESTful interface
+- Zod Request Validation             Schema validation for all inputs
+- Centralized Error Handling         User-friendly error middleware
+- CORS Configuration                 Configurable cross-origin support
+- Rate Limiting                      Per-user AI operation limits (express-rate-limit)
+- Admin Bearer Token Auth            Separate auth for admin endpoints
+- Python FastAPI Service             Async transcription microservice
+  - YouTube transcript fetching (youtube-transcript-api)
+  - Groq Whisper STT
+  - FFmpeg audio utilities
+  - Health check endpoint
+  - Pydantic request/response validation
+- Multer File Upload Middleware       Chunked upload with UUID filenames and 100 MB per-chunk limit
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+17. PDF GENERATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- PDFKit Server-Side Rendering       Structured reports with title pages, TOC, and sections
+- Mermaid Diagram Embedding          Diagrams rendered into PDF
+- Markdown Rendering                 Formatted text and code blocks inside PDF
+- Auto Pagination                    Page numbers added automatically
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+18. FRONTEND STACK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- React 19 + Vite 7                  Fast HMR development environment
+- TypeScript                         Full static type safety
+- React Router v7                    Client-side routing with protected routes
+- TailwindCSS v4                     Utility-first styling with dark mode support
+- Zustand                            Lightweight state management with persistence
+- TanStack Query v5                  Server state management and smart caching
+- Framer Motion                      Animations and page transitions
+- Mermaid.js                         Diagram rendering (mind maps, flowcharts)
+- react-markdown                     Markdown content rendering
+- FFmpeg.wasm                        In-browser audio extraction
+- Axios                              HTTP client with JWT interceptors
+- Lucide React                       Icon library
+- Sonner                             Toast notification system
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+19. DEPLOYMENT & CONFIGURATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Multi-Service Architecture         React frontend + Node.js backend + Python transcription service
+- Docker Support                     Docker builds for all services
+- Environment Variable Config        Comprehensive env-based config for all services
+- MongoDB Atlas                      Cloud-hosted database with vector search
+- NVIDIA NIM                         Cloud AI inference
+- Groq API                           Cloud speech-to-text
+- Google OAuth 2.0                   Third-party authentication provider
