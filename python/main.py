@@ -39,7 +39,7 @@ app.add_middleware(
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     # Skip health checks
-    if request.url.path in ("/health", "/docs", "/redoc", "/openapi.json"):
+    if request.url.path in ("/", "/health", "/docs", "/redoc", "/openapi.json"):
         return await call_next(request)
 
     start = time.time()
