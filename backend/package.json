@@ -9,7 +9,7 @@
         "start": "node dist/index.js",
         "test": "jest"
     },
-    "author": "Akshat Rauthan",
+    "authors": "Akshat Rauthan, Kanika Sharma",
     "license": "ISC",
     "dependencies": {
         "@types/express-rate-limit": "^5.1.3",

@@ -1,12 +1,14 @@
 # TubeToMD — Architecture & Technical Design
 
 > **Last Updated:** May 2026
-> **Author:** Akshat Rauthan
+> **Author:** Akshat Rauthan, Kanika Sharma
 
 > ### Migration Notice (May 2026)
-> The LLM stack migrated from **Groq → NVIDIA NIM** (`build.nvidia.com`). All chat / notes / translation calls now use NIM's OpenAI-compatible endpoint. Image generation was added (FLUX.1-schnell, SD3-medium fallback). **Whisper transcription remains on Groq** (NIM does not offer a hosted Whisper endpoint — only a downloadable container). The `NimKeyManager` tracks per-key *credit exhaustion* (NIM credits are lifetime, not refilled) and supports **fallback-model-before-rotate**, plus a Mongo-backed LLM response cache.
+>
+> The LLM stack migrated from **Groq → NVIDIA NIM** (`build.nvidia.com`). All chat / notes / translation calls now use NIM's OpenAI-compatible endpoint. Image generation was added (FLUX.1-schnell, SD3-medium fallback). **Whisper transcription remains on Groq** (NIM does not offer a hosted Whisper endpoint — only a downloadable container). The `NimKeyManager` tracks per-key _credit exhaustion_ (NIM credits are lifetime, not refilled) and supports **fallback-model-before-rotate**, plus a Mongo-backed LLM response cache.
 >
 > ### Groq Whisper Rate Limits (Verified May 2026)
+>
 > The Groq Whisper free tier provides: **20 RPM** · **2,000 RPD** · **7,200 ASH** (audio seconds/hour) · **28,800 ASD** (audio seconds/day) · **25 MB** max file size. Limits are **organization-level** (multiple API keys do NOT multiply quota). See `docs/implementation_plan.md` for full analysis.
 
 ---
@@ -44,18 +46,19 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
 
 ### Service Responsibilities
 
-| Service | Port | Role |
-|---------|------|------|
-| **React Frontend** | 5173 | UI — 3-column session view, dashboard tiles, video player, Markdown editor, chat |
-| **Node.js Backend** | 5000 | API gateway, auth, session management, LLM orchestration, key rotation, PDF reports, export |
-| **Python FastAPI** | 8000 | Transcription (Groq Whisper API + youtube-transcript-api) |
-| **MongoDB** | 27017 | Data persistence + vector search for RAG |
+| Service             | Port  | Role                                                                                        |
+| ------------------- | ----- | ------------------------------------------------------------------------------------------- |
+| **React Frontend**  | 5173  | UI — 3-column session view, dashboard tiles, video player, Markdown editor, chat            |
+| **Node.js Backend** | 5000  | API gateway, auth, session management, LLM orchestration, key rotation, PDF reports, export |
+| **Python FastAPI**  | 8000  | Transcription (Groq Whisper API + youtube-transcript-api)                                   |
+| **MongoDB**         | 27017 | Data persistence + vector search for RAG                                                    |
 
 ---
 
 ## 3. Tech Stack
 
 ### Frontend
+
 - **React 19** + **Vite 7** — fast dev server, HMR
 - **TailwindCSS v4** — utility-first styling
 - **React Router v7** — client-side routing
@@ -72,6 +75,7 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
 - **Vitest** / **React Testing Library** — unit and component testing
 
 ### Node.js Backend
+
 - **Express 5** + **TypeScript** — REST API
 - **Mongoose 8** — MongoDB ODM
 - **jsonwebtoken** — JWT auth (access + refresh tokens)
@@ -86,6 +90,7 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
 - **jest** / **supertest** — unit and integration testing
 
 ### Python FastAPI Service
+
 - **FastAPI** — async REST API
 - **uvicorn** — ASGI server
 - **groq** — Groq Whisper API client (`whisper-large-v3-turbo`) with round-robin key rotation and 429 backoff
@@ -96,10 +101,12 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
 - **pytest** / **httpx** — unit and integration testing
 
 ### Database
+
 - **MongoDB Atlas** — primary database
 - **MongoDB Atlas Vector Search** — embeddings for RAG Q&A
 
 ### AI/ML
+
 - **NVIDIA NIM Llama 3.3 70B** (`meta/llama-3.3-70b-instruct`) — quality-tier LLM for notes, chat Q&A
 - **NVIDIA NIM Nemotron 70B** (`nvidia/llama-3.1-nemotron-70b-instruct`) — quality-tier fallback (NVIDIA-hosted, very stable uptime)
 - **NVIDIA NIM Llama 3.1 8B** (`meta/llama-3.1-8b-instruct`) — fast/bulk LLM for translation, mindmap/flowchart generation
@@ -115,6 +122,7 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
 ## 4. Database Schema
 
 ### 4.1 Users Collection
+
 ```typescript
 {
   _id: ObjectId,
@@ -134,6 +142,7 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
 ```
 
 ### 4.2 Sessions Collection (one per video)
+
 ```typescript
 {
   _id: ObjectId,
@@ -166,6 +175,7 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
 ```
 
 ### 4.3 Notes Collection
+
 ```typescript
 {
   _id: ObjectId,
@@ -189,6 +199,7 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
 ```
 
 ### 4.4 ChatMessages Collection (RAG Q&A)
+
 ```typescript
 {
   _id: ObjectId,
@@ -206,6 +217,7 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
 ```
 
 ### 4.5 Embeddings Collection (Vector Search)
+
 ```typescript
 {
   _id: ObjectId,
@@ -220,6 +232,7 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
 ```
 
 ### 4.6 Annotations Collection
+
 ```typescript
 {
   _id: ObjectId,
@@ -240,78 +253,85 @@ TubeToMD is a full-stack platform that extracts knowledge from YouTube videos an
 ## 5. API Design
 
 ### 5.1 Auth Routes (`/api/v1/auth`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/register` | Register with email/password |
-| POST | `/login` | Login with email/password |
-| GET | `/google` | Initiate Google OAuth |
-| GET | `/google/callback` | Google OAuth callback |
-| POST | `/link-google` | Link Google to existing account |
-| POST | `/set-password` | Set password for OAuth-only account |
-| GET | `/me` | Get current user profile |
-| PUT | `/me` | Update user profile |
-| POST | `/refresh` | Refresh JWT token |
+
+| Method | Endpoint           | Description                         |
+| ------ | ------------------ | ----------------------------------- |
+| POST   | `/register`        | Register with email/password        |
+| POST   | `/login`           | Login with email/password           |
+| GET    | `/google`          | Initiate Google OAuth               |
+| GET    | `/google/callback` | Google OAuth callback               |
+| POST   | `/link-google`     | Link Google to existing account     |
+| POST   | `/set-password`    | Set password for OAuth-only account |
+| GET    | `/me`              | Get current user profile            |
+| PUT    | `/me`              | Update user profile                 |
+| POST   | `/refresh`         | Refresh JWT token                   |
 
 ### 5.2 Session Routes (`/api/v1/sessions`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/youtube` | Create session from YouTube URL |
-| POST | `/upload/init` | Initialize upload session (returns sessionId) |
-| POST | `/upload/chunk` | Upload & transcribe a single audio chunk |
-| POST | `/upload/complete` | Merge all chunks, generate embeddings |
-| GET | `/upload/progress/:id` | Get chunk upload progress |
-| GET | `/` | List all user sessions |
-| GET | `/find-by-url` | Find existing session by video URL (deduplication) |
-| GET | `/:id` | Get session details |
-| PUT | `/:id` | Update session (rename title) |
-| DELETE | `/:id` | Delete session |
-| GET | `/:id/transcript` | Get full transcript |
-| GET | `/:id/transcript?start=X&end=Y` | Get partial transcript |
-| GET | `/:id/report` | Download PDF report (title page, TOC, notes, annotations, transcript) |
-| POST | `/:id/translate` | Translate transcript to target language |
-| POST | `/:id/restore-original` | Restore original (untranslated) transcript |
+
+| Method | Endpoint                        | Description                                                           |
+| ------ | ------------------------------- | --------------------------------------------------------------------- |
+| POST   | `/youtube`                      | Create session from YouTube URL                                       |
+| POST   | `/upload/init`                  | Initialize upload session (returns sessionId)                         |
+| POST   | `/upload/chunk`                 | Upload & transcribe a single audio chunk                              |
+| POST   | `/upload/complete`              | Merge all chunks, generate embeddings                                 |
+| GET    | `/upload/progress/:id`          | Get chunk upload progress                                             |
+| GET    | `/`                             | List all user sessions                                                |
+| GET    | `/find-by-url`                  | Find existing session by video URL (deduplication)                    |
+| GET    | `/:id`                          | Get session details                                                   |
+| PUT    | `/:id`                          | Update session (rename title)                                         |
+| DELETE | `/:id`                          | Delete session                                                        |
+| GET    | `/:id/transcript`               | Get full transcript                                                   |
+| GET    | `/:id/transcript?start=X&end=Y` | Get partial transcript                                                |
+| GET    | `/:id/report`                   | Download PDF report (title page, TOC, notes, annotations, transcript) |
+| POST   | `/:id/translate`                | Translate transcript to target language                               |
+| POST   | `/:id/restore-original`         | Restore original (untranslated) transcript                            |
 
 ### 5.3 Notes Routes (`/api/v1/sessions/:sessionId/notes`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/generate` | Generate notes (summary/mindmap/etc.) |
-| GET | `/` | List all notes for session |
-| GET | `/:noteId` | Get specific note |
-| PUT | `/:noteId` | Edit note content |
-| DELETE | `/:noteId` | Delete note |
-| GET | `/:noteId/export?format=md\|pdf\|docx\|html` | Export note |
+
+| Method | Endpoint                                     | Description                           |
+| ------ | -------------------------------------------- | ------------------------------------- |
+| POST   | `/generate`                                  | Generate notes (summary/mindmap/etc.) |
+| GET    | `/`                                          | List all notes for session            |
+| GET    | `/:noteId`                                   | Get specific note                     |
+| PUT    | `/:noteId`                                   | Edit note content                     |
+| DELETE | `/:noteId`                                   | Delete note                           |
+| GET    | `/:noteId/export?format=md\|pdf\|docx\|html` | Export note                           |
 
 ### 5.4 Chat Routes (`/api/v1/sessions/:sessionId/chat`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/message` | Send message (RAG Q&A) |
-| GET | `/history` | Get chat history |
-| DELETE | `/history` | Clear chat history |
+
+| Method | Endpoint   | Description            |
+| ------ | ---------- | ---------------------- |
+| POST   | `/message` | Send message (RAG Q&A) |
+| GET    | `/history` | Get chat history       |
+| DELETE | `/history` | Clear chat history     |
 
 ### 5.5 Annotations Routes (`/api/v1/sessions/:sessionId/annotations`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/` | Create annotation/highlight |
-| GET | `/` | List annotations |
-| PUT | `/:annotationId` | Edit annotation |
-| DELETE | `/:annotationId` | Delete annotation |
-| POST | `/:annotationId/append-to-note` | Append to note |
+
+| Method | Endpoint                        | Description                 |
+| ------ | ------------------------------- | --------------------------- |
+| POST   | `/`                             | Create annotation/highlight |
+| GET    | `/`                             | List annotations            |
+| PUT    | `/:annotationId`                | Edit annotation             |
+| DELETE | `/:annotationId`                | Delete annotation           |
+| POST   | `/:annotationId/append-to-note` | Append to note              |
 
 ### 5.6 Admin Routes (`/api/v1/admin`) — Protected by `ADMIN_API_TOKEN` bearer auth
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/nim-keys` | Get status of all NIM API keys (masked keys, active / rate-limited / credit-exhausted counts, refill times) |
-| POST | `/nim-keys` | Add a new NVIDIA NIM API key to the rotation pool (`{ key, label? }`) |
-| DELETE | `/nim-keys` | Remove a key from the pool (`{ key }`) |
+
+| Method | Endpoint    | Description                                                                                                 |
+| ------ | ----------- | ----------------------------------------------------------------------------------------------------------- |
+| GET    | `/nim-keys` | Get status of all NIM API keys (masked keys, active / rate-limited / credit-exhausted counts, refill times) |
+| POST   | `/nim-keys` | Add a new NVIDIA NIM API key to the rotation pool (`{ key, label? }`)                                       |
+| DELETE | `/nim-keys` | Remove a key from the pool (`{ key }`)                                                                      |
 
 ### 5.7 Python FastAPI Endpoints (`http://localhost:8000`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/transcribe/youtube` | Get YT transcript with timestamps |
-| POST | `/transcribe/upload` | Transcribe uploaded audio/video (legacy) |
-| POST | `/transcribe/chunk` | Transcribe a single audio chunk (Groq Whisper) |
-| POST | `/transcribe/merge` | Merge chunk transcriptions |
-| GET | `/health` | Health check |
+
+| Method | Endpoint              | Description                                    |
+| ------ | --------------------- | ---------------------------------------------- |
+| POST   | `/transcribe/youtube` | Get YT transcript with timestamps              |
+| POST   | `/transcribe/upload`  | Transcribe uploaded audio/video (legacy)       |
+| POST   | `/transcribe/chunk`   | Transcribe a single audio chunk (Groq Whisper) |
+| POST   | `/transcribe/merge`   | Merge chunk transcriptions                     |
+| GET    | `/health`             | Health check                                   |
 
 ---
 
@@ -337,12 +357,13 @@ TubeToMD uses a **circular queue key manager** (`NimKeyManager`) for resilient N
 
 ### Smart Model Routing
 
-| Model | RPD Limit | Used For |
-|-------|-----------|----------|
-| `llama-3.3-70b-versatile` | 1,000 | Notes, Chat Q&A (quality-critical) |
-| `llama-3.1-8b-instant` | 14,400 | Translation (bulk tasks) |
+| Model                     | RPD Limit | Used For                           |
+| ------------------------- | --------- | ---------------------------------- |
+| `llama-3.3-70b-versatile` | 1,000     | Notes, Chat Q&A (quality-critical) |
+| `llama-3.1-8b-instant`    | 14,400    | Translation (bulk tasks)           |
 
 **Flow:**
+
 1. `callNIM(prompt, model)` gets the next key via round-robin
 2. On success → return result
 3. On 429/RATE_LIMITED → `markExhausted(key)` sets `refillAt`, tries next key
@@ -354,6 +375,7 @@ TubeToMD uses a **circular queue key manager** (`NimKeyManager`) for resilient N
 ## 7. Key Workflows
 
 ### 7.1 YouTube Video Flow
+
 ```
 User enters YT URL
     → Frontend sends URL to Node.js Backend
@@ -368,6 +390,7 @@ User enters YT URL
 ```
 
 ### 7.2 Uploaded Video Flow (Chunk-Based Pipeline)
+
 ```
 User selects video file (max 512MB / 15 min)
     → Frontend loads FFmpeg.wasm in browser
@@ -390,6 +413,7 @@ User selects video file (max 512MB / 15 min)
 ```
 
 ### 7.3 RAG Q&A Flow
+
 ```
 User asks question
     → Backend generates local embedding for question
@@ -401,6 +425,7 @@ User asks question
 ```
 
 ### 7.4 Note Generation Flow
+
 ```
 User selects type (summary/mindmap/flowchart/etc.) + optional persona + optional time range
     → Backend fetches transcript (full or filtered by time range)
@@ -415,15 +440,15 @@ User selects type (summary/mindmap/flowchart/etc.) + optional persona + optional
 
 ## 8. Summary Personas
 
-| Persona | Description |
-|---------|-------------|
-| `detailed` | Comprehensive notes with all key points, code blocks, examples |
-| `executive` | High-level summary for quick overview |
-| `eli5` | "Explain Like I'm 5" — simplified concepts |
-| `code-heavy` | Focus on code examples, technical details |
-| `actionable` | Action items, steps, takeaways |
-| `academic` | Academic style with citations and references |
-| `custom` | User-defined custom prompt |
+| Persona      | Description                                                    |
+| ------------ | -------------------------------------------------------------- |
+| `detailed`   | Comprehensive notes with all key points, code blocks, examples |
+| `executive`  | High-level summary for quick overview                          |
+| `eli5`       | "Explain Like I'm 5" — simplified concepts                     |
+| `code-heavy` | Focus on code examples, technical details                      |
+| `actionable` | Action items, steps, takeaways                                 |
+| `academic`   | Academic style with citations and references                   |
+| `custom`     | User-defined custom prompt                                     |
 
 ---
 
@@ -433,7 +458,7 @@ User selects type (summary/mindmap/flowchart/etc.) + optional persona + optional
 /                       → Landing page
 /auth/login             → Login (email/pwd + Google OAuth)
 /auth/register          → Register
-/dashboard              → Session library — grid tiles with YouTube thumbnails, 
+/dashboard              → Session library — grid tiles with YouTube thumbnails,
                           duration badges, status indicators, download report,
                           YouTube URL input, video upload with progress
 /session/:id            → 3-column layout
@@ -457,6 +482,7 @@ User selects type (summary/mindmap/flowchart/etc.) + optional persona + optional
 ## 10. Environment Variables
 
 ### Node.js Backend (`.env`)
+
 ```env
 PORT=5000
 MONGODB_URI=mongodb+srv://...
@@ -478,6 +504,7 @@ UPLOAD_DIR=./uploads
 ```
 
 ### Python FastAPI (`.env`)
+
 ```env
 PORT=8000
 GROQ_API_KEY=your_groq_api_key
@@ -486,6 +513,7 @@ UPLOAD_DIR=./uploads
 ```
 
 ### React Frontend (`.env`)
+
 ```env
 VITE_API_URL=http://localhost:5000/api
 VITE_GOOGLE_CLIENT_ID=your_google_client_id
@@ -496,6 +524,7 @@ VITE_GOOGLE_CLIENT_ID=your_google_client_id
 ## 11. Folder Structure
 
 ### Node.js Backend
+
 ```
 backend/
 ├── src/
@@ -577,6 +606,7 @@ backend/
 ```
 
 ### Python FastAPI Service
+
 ```
 python/
 ├── main.py
@@ -603,6 +633,7 @@ python/
 ```
 
 ### React Frontend
+
 ```
 frontend/
 ├── index.html
@@ -660,12 +691,12 @@ frontend/
 
 ### HuggingFace Free Tier Resources
 
-| Resource | Limit |
-|----------|-------|
-| CPU | 2 vCPUs |
-| RAM | 16 GB |
-| Disk | 50 GB (ephemeral) |
-| GPU | None (ZeroGPU requires Gradio SDK, not Docker) |
+| Resource | Limit                                          |
+| -------- | ---------------------------------------------- |
+| CPU      | 2 vCPUs                                        |
+| RAM      | 16 GB                                          |
+| Disk     | 50 GB (ephemeral)                              |
+| GPU      | None (ZeroGPU requires Gradio SDK, not Docker) |
 
 Both backends are **pure API gateways** — they call remote AI services (NIM + Groq) and don't run any models locally. The 2-vCPU / 16 GB free tier is more than sufficient.
 

@@ -299,9 +299,9 @@ TubeToMD/
 
 ---
 
-## Author
+## Authors
 
-**Akshat Rauthan**
+**Akshat Rauthan, Kanika Sharma**
 
 ---
 
