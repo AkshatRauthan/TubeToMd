@@ -32,7 +32,7 @@ TubeToMD extracts transcripts from YouTube videos (or user-uploaded videos via b
 ## Tech Stack
 
 | Layer | Technology |
-|-------|-----------||
+|-------|-----------|
 | **Frontend** | React 19 · TypeScript · Vite 7 · TailwindCSS v4 · Zustand · TanStack Query · Framer Motion · Mermaid.js |
 | **Backend** | Express 5 · TypeScript · Mongoose 8 · JWT · pdfkit · openai SDK (NIM-compatible) |
 | **Transcription** | Python FastAPI · Groq Whisper API (`whisper-large-v3-turbo`, 20 RPM / 2K RPD / 28.8K ASD free) · youtube-transcript-api |
@@ -72,7 +72,7 @@ TubeToMD extracts transcripts from YouTube videos (or user-uploaded videos via b
 - **MongoDB** (Atlas recommended for Vector Search)
 - **FFmpeg** installed on your system (for audio processing)
 - An **NVIDIA NIM API key** — get one free at [build.nvidia.com](https://build.nvidia.com) (mobile OTP verification required, ~1000 free credits per key; 2–3 keys recommended for rotation)
-- A **Groq API key** — *only required if using Whisper transcription for uploaded videos*; get free at [console.groq.com/keys](https://console.groq.com/keys). Free tier provides 20 RPM / 2,000 RPD / 28,800 audio seconds per day (org-level limits; key rotation does NOT multiply quota)
+- A **Groq API key** — _only required if using Whisper transcription for uploaded videos_; get free at [console.groq.com/keys](https://console.groq.com/keys). Free tier provides 20 RPM / 2,000 RPD / 28,800 audio seconds per day (org-level limits; key rotation does NOT multiply quota)
 
 ### 1. Clone the Repository
 
@@ -119,97 +119,103 @@ You can run TubeToMD entirely in the cloud using GitHub Codespaces. It will auto
 
 ### Backend (`backend/.env`)
 
-| Variable | Description |
-|----------|-------------|
-| `PORT` | Server port (default: `5000`) |
-| `MONGODB_URI` | MongoDB connection string |
-| `JWT_SECRET` | Secret for JWT access tokens |
-| `JWT_REFRESH_SECRET` | Secret for JWT refresh tokens |
-| `NVIDIA_API_KEY` | Primary NVIDIA NIM API key |
-| `NVIDIA_API_KEYS` | Comma-separated list of additional NIM keys for rotation pool |
-| `NVIDIA_MODEL_QUALITY` | LLM for notes/chat (default `meta/llama-3.3-70b-instruct`) |
-| `NVIDIA_MODEL_FAST` | LLM for translation/structured (default `meta/llama-3.1-8b-instruct`) |
-| `NVIDIA_MODEL_IMAGE` | Image gen model (default `black-forest-labs/flux.1-schnell`) |
-| `IMAGE_GEN_DAILY_QUOTA_PER_USER` | Per-user daily image cap (default `5`, `0` to disable) |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
-| `PYTHON_SERVICE_URL` | URL of the Python service (default: `http://localhost:8000`) |
-| `FRONTEND_URL` | Frontend URL for CORS (default: `http://localhost:5173`) |
-| `ADMIN_API_TOKEN` | Bearer token for admin API endpoints |
+| Variable                         | Description                                                           |
+| -------------------------------- | --------------------------------------------------------------------- |
+| `PORT`                           | Server port (default: `5000`)                                         |
+| `MONGODB_URI`                    | MongoDB connection string                                             |
+| `JWT_SECRET`                     | Secret for JWT access tokens                                          |
+| `JWT_REFRESH_SECRET`             | Secret for JWT refresh tokens                                         |
+| `NVIDIA_API_KEY`                 | Primary NVIDIA NIM API key                                            |
+| `NVIDIA_API_KEYS`                | Comma-separated list of additional NIM keys for rotation pool         |
+| `NVIDIA_MODEL_QUALITY`           | LLM for notes/chat (default `meta/llama-3.3-70b-instruct`)            |
+| `NVIDIA_MODEL_FAST`              | LLM for translation/structured (default `meta/llama-3.1-8b-instruct`) |
+| `NVIDIA_MODEL_IMAGE`             | Image gen model (default `black-forest-labs/flux.1-schnell`)          |
+| `IMAGE_GEN_DAILY_QUOTA_PER_USER` | Per-user daily image cap (default `5`, `0` to disable)                |
+| `GOOGLE_CLIENT_ID`               | Google OAuth client ID                                                |
+| `GOOGLE_CLIENT_SECRET`           | Google OAuth client secret                                            |
+| `PYTHON_SERVICE_URL`             | URL of the Python service (default: `http://localhost:8000`)          |
+| `FRONTEND_URL`                   | Frontend URL for CORS (default: `http://localhost:5173`)              |
+| `ADMIN_API_TOKEN`                | Bearer token for admin API endpoints                                  |
 
 ### Python (`python/.env`)
 
-| Variable | Description |
-|----------|-------------|
-| `PORT` | Server port (default: `8000`) |
-| `GROQ_API_KEY` | Primary Groq API key (for Whisper transcription) |
-| `GROQ_API_KEYS` | Comma-separated list of additional Groq keys for rotation pool |
-| `MAX_FILE_SIZE_MB` | Max upload file size in MB (default: 500) |
+| Variable           | Description                                                    |
+| ------------------ | -------------------------------------------------------------- |
+| `PORT`             | Server port (default: `8000`)                                  |
+| `GROQ_API_KEY`     | Primary Groq API key (for Whisper transcription)               |
+| `GROQ_API_KEYS`    | Comma-separated list of additional Groq keys for rotation pool |
+| `MAX_FILE_SIZE_MB` | Max upload file size in MB (default: 500)                      |
 
 ---
 
 ## API Endpoints
 
 ### Auth (`/api/v1/auth`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/register` | Register with email/password |
-| POST | `/login` | Login with email/password |
-| GET | `/google` | Initiate Google OAuth |
-| GET | `/google/callback` | Google OAuth callback |
-| POST | `/refresh` | Refresh JWT token |
-| GET | `/me` | Get current user profile |
-| PUT | `/me` | Update user profile |
+
+| Method | Endpoint           | Description                  |
+| ------ | ------------------ | ---------------------------- |
+| POST   | `/register`        | Register with email/password |
+| POST   | `/login`           | Login with email/password    |
+| GET    | `/google`          | Initiate Google OAuth        |
+| GET    | `/google/callback` | Google OAuth callback        |
+| POST   | `/refresh`         | Refresh JWT token            |
+| GET    | `/me`              | Get current user profile     |
+| PUT    | `/me`              | Update user profile          |
 
 ### Sessions (`/api/v1/sessions`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/youtube` | Create session from YouTube URL |
-| POST | `/upload/init` | Initialize upload session |
-| POST | `/upload/chunk` | Upload audio chunk |
-| POST | `/upload/complete` | Merge chunks & finalize |
-| GET | `/` | List all user sessions |
-| GET | `/find-by-url` | Find existing session by video URL |
-| GET | `/:id` | Get session details |
-| PUT | `/:id` | Update session (rename) |
-| DELETE | `/:id` | Delete session |
-| GET | `/:id/transcript` | Get transcript (supports `?start=X&end=Y`) |
-| GET | `/:id/report` | Download PDF report |
-| POST | `/:id/translate` | Translate transcript |
-| POST | `/:id/restore-original` | Restore original transcript |
+
+| Method | Endpoint                | Description                                |
+| ------ | ----------------------- | ------------------------------------------ |
+| POST   | `/youtube`              | Create session from YouTube URL            |
+| POST   | `/upload/init`          | Initialize upload session                  |
+| POST   | `/upload/chunk`         | Upload audio chunk                         |
+| POST   | `/upload/complete`      | Merge chunks & finalize                    |
+| GET    | `/`                     | List all user sessions                     |
+| GET    | `/find-by-url`          | Find existing session by video URL         |
+| GET    | `/:id`                  | Get session details                        |
+| PUT    | `/:id`                  | Update session (rename)                    |
+| DELETE | `/:id`                  | Delete session                             |
+| GET    | `/:id/transcript`       | Get transcript (supports `?start=X&end=Y`) |
+| GET    | `/:id/report`           | Download PDF report                        |
+| POST   | `/:id/translate`        | Translate transcript                       |
+| POST   | `/:id/restore-original` | Restore original transcript                |
 
 ### Notes (`/api/v1/notes`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/generate` | Generate notes (type + persona) |
-| GET | `/` | List notes for session |
-| GET | `/:noteId` | Get specific note |
-| PUT | `/:noteId` | Edit note |
-| DELETE | `/:noteId` | Delete note |
-| GET | `/:noteId/export` | Export as Markdown/HTML |
-| POST | `/:noteId/image` | Generate AI cover image (NIM FLUX.1-schnell) |
+
+| Method | Endpoint          | Description                                  |
+| ------ | ----------------- | -------------------------------------------- |
+| POST   | `/generate`       | Generate notes (type + persona)              |
+| GET    | `/`               | List notes for session                       |
+| GET    | `/:noteId`        | Get specific note                            |
+| PUT    | `/:noteId`        | Edit note                                    |
+| DELETE | `/:noteId`        | Delete note                                  |
+| GET    | `/:noteId/export` | Export as Markdown/HTML                      |
+| POST   | `/:noteId/image`  | Generate AI cover image (NIM FLUX.1-schnell) |
 
 ### Chat (`/api/v1/chat`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/message` | Send RAG Q&A message |
-| GET | `/history` | Get chat history |
-| DELETE | `/history` | Clear chat history |
+
+| Method | Endpoint   | Description          |
+| ------ | ---------- | -------------------- |
+| POST   | `/message` | Send RAG Q&A message |
+| GET    | `/history` | Get chat history     |
+| DELETE | `/history` | Clear chat history   |
 
 ### Annotations (`/api/v1/annotations`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/` | Create annotation |
-| GET | `/` | List annotations |
-| PUT | `/:annotationId` | Update annotation |
+
+| Method | Endpoint         | Description       |
+| ------ | ---------------- | ----------------- |
+| POST   | `/`              | Create annotation |
+| GET    | `/`              | List annotations  |
+| PUT    | `/:annotationId` | Update annotation |
 | DELETE | `/:annotationId` | Delete annotation |
 
 ### Admin (`/api/v1/admin`) — requires `Authorization: Bearer <ADMIN_API_TOKEN>`
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/nim-keys` | Get status of all NIM API keys in pool |
-| POST | `/nim-keys` | Add a new key to rotation pool |
-| DELETE | `/nim-keys` | Remove a key from pool |
+
+| Method | Endpoint    | Description                            |
+| ------ | ----------- | -------------------------------------- |
+| GET    | `/nim-keys` | Get status of all NIM API keys in pool |
+| POST   | `/nim-keys` | Add a new key to rotation pool         |
+| DELETE | `/nim-keys` | Remove a key from pool                 |
 
 ---
 
@@ -266,12 +272,14 @@ TubeToMD/
 ## Key Workflows
 
 ### YouTube Video → Notes
+
 1. User pastes a YouTube URL on the dashboard
 2. Backend checks for existing session (deduplication)
 3. If new: creates session → calls Python service for transcript → generates embeddings → marks ready
 4. Frontend loads 3-column session view: video player | transcript | notes/chat
 
 ### Uploaded Video → Notes
+
 1. User selects a video file in the dashboard
 2. Frontend loads FFmpeg.wasm, extracts audio (mono 16kHz WAV), splits into ~5 min chunks
 3. Chunks uploaded in parallel batches (3 concurrent) to backend
@@ -279,6 +287,7 @@ TubeToMD/
 5. Backend merges all chunks, generates embeddings → session ready
 
 ### NVIDIA NIM Key Rotation
+
 1. Keys loaded from `NVIDIA_API_KEY` + `NVIDIA_API_KEYS` env vars on startup
 2. Each LLM call picks the next key via round-robin (also serves image-gen)
 3. On 429/rate-limit: try **fallback model on same key** first; on second failure mark key in cooldown (parses retry-after; default 65s)
